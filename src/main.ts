@@ -5,6 +5,7 @@ import { AnimalSpawner, SPECIES_BY_ID } from './animals';
 import { PhotoRecord, scoreShot, computePoints, makePolaroid, captionFor } from './photo';
 import { SaveData, downloadSave, parseSaveZip, buildSaveZip, autosave, loadAutosave, dayOf } from './save';
 import { UI } from './ui';
+import { AmbientMusic } from './music';
 
 type GameState = 'title' | 'playing' | 'book' | 'paused';
 
@@ -93,9 +94,12 @@ interface Session {
 let state: GameState = 'title';
 let session: Session | null = null;
 let aiming = false;
-let shotCooldown = 0;
+let shotCooldown = 0; // while > 0, the polaroid is still developing — no photos
 let autosaveTimer = 0;
 let wasLocked = false;
+const DEVELOP_TIME = 2.6; // seconds a photo takes to develop
+
+const music = new AmbientMusic();
 
 const ui = new UI({
   onNewGame: (seed) => beginTrip({ seed, elapsed: 0, player: null as never, photos: [] }, true),
@@ -176,6 +180,7 @@ function beginTrip(data: SaveData, isNew: boolean) {
     state = 'playing';
     ui.showPlaying();
     updateScore();
+    music.start(); // begins the ambient loop (needs the user gesture that got us here)
     const look = IS_TOUCH ? 'drag to look around' : 'click to look around';
     ui.toast(isNew ? `Welcome to world ${data.seed >>> 0} — ${look}` : `Trip restored — ${look}`);
   }, 40);
@@ -190,53 +195,64 @@ function updateScore() {
 // ------------------------------------------------------------------ photo
 
 function takePhoto() {
-  if (!session || shotCooldown > 0) return;
-  shotCooldown = 0.8;
+  if (!session || shotCooldown > 0) return; // previous photo still developing
+  shotCooldown = DEVELOP_TIME;
   renderer.render(scene, camera); // guarantee a fresh frame in the buffer
-  const { subject, stars } = scoreShot(camera, session.spawner.animals, session.world.occluders);
+  const shot = scoreShot(camera, session.spawner.animals, session.world.occluders);
   ui.flash();
   shutterSound();
   const day = dayOf(session.elapsed);
 
-  if (!subject) {
+  if (!shot.subject) {
     const url = makePolaroid(renderer.domElement, 'Just scenery…', `Day ${day}`);
-    ui.develop(url);
+    ui.develop(url, DEVELOP_TIME);
     ui.toast('No animal in frame');
     return;
   }
 
-  const points = computePoints(subject, stars);
+  const subject = shot.subject;
+  const points = computePoints(subject, shot.quality, shot.combo, shot.flying);
   const rec: PhotoRecord = {
     species: subject.def.id,
     order: 0,
-    stars,
+    stars: shot.stars,
     points,
     sizeFactor: subject.size.factor,
     sizeLabel: subject.size.label,
     day,
+    combo: shot.combo,
+    flying: shot.flying,
     dataUrl: '',
   };
   const cap = captionFor(rec);
   rec.dataUrl = makePolaroid(renderer.domElement, cap.main, cap.sub);
+
+  const tags: string[] = [];
+  if (shot.combo > 1) tags.push(`×${shot.combo} combo!`);
+  if (shot.flying) tags.push('in flight!');
+  const tagText = tags.length > 0 ? '  ' + tags.join(' ') : '';
 
   const existing = session.photos.find((p) => p.species === subject.def.id);
   if (!existing) {
     rec.order = session.photos.length + 1;
     session.photos.push(rec);
     newSpeciesSound();
-    ui.toast(`NEW — ${cap.main}!  ${'★'.repeat(stars)}  +${points} pts`);
+    ui.toast(`NEW — ${cap.main}!  ${'★'.repeat(shot.stars)}${tagText}  +${points} pts`);
   } else if (points > existing.points) {
     rec.order = existing.order;
     session.photos[session.photos.indexOf(existing)] = rec;
-    ui.toast(`Better shot — ${cap.main}  ${'★'.repeat(stars)}  ${points} pts`);
+    ui.toast(`Better shot — ${cap.main}  ${'★'.repeat(shot.stars)}${tagText}  ${points} pts`);
   } else {
-    ui.toast(`${cap.main}  ${'★'.repeat(stars)} — your old shot was better`);
+    ui.toast(`${cap.main}  ${'★'.repeat(shot.stars)} — your old shot was better`);
   }
-  ui.develop(rec.dataUrl);
+  ui.develop(rec.dataUrl, DEVELOP_TIME);
 
-  // the shutter spooks nearby subjects
-  const dist = subject.position.distanceTo(session.player.position);
-  if (dist < subject.def.fleeDist * 1.3) subject.spook(session.player.position);
+  // the shutter spooks everyone who was in the shot
+  for (const a of [subject, ...shot.extras]) {
+    if (a.position.distanceTo(session.player.position) < a.def.fleeDist * 1.3) {
+      a.spook(session.player.position);
+    }
+  }
 
   updateScore();
   autosave(snapshot(session));
@@ -246,6 +262,24 @@ function takePhoto() {
 
 const canvas = renderer.domElement;
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+const waterOverlay = document.getElementById('water-overlay')!;
+
+// instructions overlay (title screen + pause menu)
+const helpEl = document.getElementById('help')!;
+for (const id of ['btn-help', 'btn-help2']) {
+  document.getElementById(id)!.addEventListener('click', () => helpEl.classList.remove('hidden'));
+}
+document.getElementById('btn-help-close')!.addEventListener('click', () => helpEl.classList.add('hidden'));
+
+// music toggle (pause menu)
+const musicBtn = document.getElementById('btn-music')! as HTMLButtonElement;
+const musicLabel = () => (musicBtn.textContent = `Music: ${music.enabled ? 'on' : 'off'}`);
+musicLabel();
+musicBtn.addEventListener('click', () => {
+  music.setEnabled(!music.enabled);
+  music.start();
+  musicLabel();
+});
 
 if (!IS_TOUCH) {
   canvas.addEventListener('mousedown', (e) => {
@@ -270,7 +304,6 @@ if (!IS_TOUCH) {
 // -------------------------------------------------------- touch controls
 
 let touchZoomFov = 70; // driven by the side slider
-let walkHeld = false;
 
 if (IS_TOUCH) {
   canvas.style.touchAction = 'none';
@@ -300,24 +333,50 @@ if (IS_TOUCH) {
   canvas.addEventListener('pointerup', endLook);
   canvas.addEventListener('pointercancel', endLook);
 
-  // walk button: hold to move in the direction you're facing
-  const walkBtn = document.getElementById('t-walk')!;
-  const setWalk = (on: boolean) => {
-    walkHeld = on;
-    session?.player.onKey('KeyW', on);
+  // joystick: relative to view — up = forward, push to the edge to run
+  const stick = document.getElementById('joystick')!;
+  const knob = document.getElementById('joystick-knob')!;
+  let stickId: number | null = null;
+  const KNOB_RANGE = 46;
+  const setStick = (f: number, s: number) => {
+    if (session) {
+      session.player.analog.f = f;
+      session.player.analog.s = s;
+    }
+    knob.style.transform = `translate(${s * KNOB_RANGE}px, ${-f * KNOB_RANGE}px)`;
   };
-  walkBtn.addEventListener('pointerdown', (e) => {
+  const stickMove = (e: PointerEvent) => {
+    const r = stick.getBoundingClientRect();
+    let sx = (e.clientX - (r.left + r.width / 2)) / KNOB_RANGE;
+    let sy = ((r.top + r.height / 2) - e.clientY) / KNOB_RANGE;
+    const mag = Math.hypot(sx, sy);
+    if (mag > 1) {
+      sx /= mag;
+      sy /= mag;
+    }
+    setStick(sy, sx);
+  };
+  stick.addEventListener('pointerdown', (e) => {
     e.preventDefault();
+    if (stickId !== null || state !== 'playing') return;
+    stickId = e.pointerId;
     try {
-      walkBtn.setPointerCapture(e.pointerId); // keep getting events if the finger slides off
+      stick.setPointerCapture(e.pointerId); // keep tracking if the finger drifts off
     } catch {
       /* synthetic events have no active pointer */
     }
-    if (state === 'playing') setWalk(true);
+    stickMove(e);
   });
-  const walkOff = () => setWalk(false);
-  walkBtn.addEventListener('pointerup', walkOff);
-  walkBtn.addEventListener('pointercancel', walkOff);
+  stick.addEventListener('pointermove', (e) => {
+    if (e.pointerId === stickId) stickMove(e);
+  });
+  const stickEnd = (e: PointerEvent) => {
+    if (e.pointerId !== stickId) return;
+    stickId = null;
+    setStick(0, 0);
+  };
+  stick.addEventListener('pointerup', stickEnd);
+  stick.addEventListener('pointercancel', stickEnd);
 
   document.getElementById('t-snap')!.addEventListener('pointerdown', (e) => {
     e.preventDefault();
@@ -333,7 +392,6 @@ if (IS_TOUCH) {
     e.preventDefault();
     if (state !== 'playing' || !session) return;
     state = 'paused';
-    setWalk(false);
     session.player.clearKeys();
     const pts = session.photos.reduce((a, r) => a + r.points, 0);
     autosave(snapshot(session));
@@ -350,7 +408,6 @@ function toggleBook() {
   if (state === 'playing' && session) {
     state = 'book';
     session.player.clearKeys();
-    walkHeld = false;
     aiming = false;
     ui.openBook(session.photos);
     if (!IS_TOUCH) document.exitPointerLock();
@@ -420,7 +477,12 @@ function tick() {
       updateScore();
     }
     session.player.update(dt);
-    session.spawner.update(dt, session.player.position, session.player.noiseFactor);
+    const depth = session.player.waterDepth;
+    session.spawner.update(dt, session.player.position, session.player.noiseFactor, depth);
+
+    // wading: blue rises from the bottom of the screen with depth
+    const waterPct = Math.min(48, Math.max(0, depth - 0.15) * 26);
+    waterOverlay.style.height = waterPct > 1 ? `${waterPct}vh` : '0px';
 
     // camera zoom: slider on touch, right-click on desktop
     const targetFov = IS_TOUCH ? touchZoomFov : aiming ? 40 : 70;
@@ -454,6 +516,9 @@ ui.showTitle(loadAutosave() !== null);
   },
   get fov() {
     return camera.fov;
+  },
+  get cooldown() {
+    return shotCooldown;
   },
   takePhoto,
   snapshot: () => (session ? snapshot(session) : null),

@@ -267,7 +267,7 @@ export class World {
 
   private buildWater() {
     const geo = new THREE.PlaneGeometry(WORLD_HALF * 2, WORLD_HALF * 2);
-    const mat = new THREE.MeshLambertMaterial({ color: '#4d87b5', transparent: true, opacity: 0.82 });
+    const mat = new THREE.MeshLambertMaterial({ color: '#4d87b5', transparent: true, opacity: 0.68 });
     const mesh = new THREE.Mesh(geo, mat);
     mesh.rotation.x = -Math.PI / 2;
     mesh.position.y = WATER_Y;

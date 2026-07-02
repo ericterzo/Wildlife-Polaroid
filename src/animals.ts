@@ -11,8 +11,10 @@ export interface SpeciesDef {
   fleeDist: number; // meters at which it spooks (walking player)
   speed: number; // flee speed m/s
   baseScale: number;
-  flies: boolean; // flees by flying away
+  flies: boolean; // flees by flying away (photos of it in flight earn a bonus)
   swims: boolean; // lives on the water surface
+  aquatic?: boolean; // underwater — only appears while the player is wading
+  temperament?: 'friendly' | 'shy'; // friendly ones come to you; default = shy
   build: () => AnimalRig;
 }
 
@@ -149,6 +151,7 @@ interface BirdOpts {
   legH: number;
   legColor?: string;
   tailUp?: boolean;
+  breastColor?: string; // robin's red breast
 }
 
 /** Generic bird. +Z is forward. */
@@ -159,6 +162,12 @@ function bird(o: BirdOpts): AnimalRig {
   body.position.y = o.bodyY;
   body.rotation.x = -0.15;
   g.add(body);
+  if (o.breastColor) {
+    const breast = box(bw * 0.8, bh * 0.62, bd * 0.3, o.breastColor);
+    breast.position.set(0, o.bodyY - bh * 0.12, bd * 0.32);
+    breast.rotation.x = -0.15;
+    g.add(breast);
+  }
 
   const head = new THREE.Group();
   const neck = o.neckLen ?? 0;
@@ -201,7 +210,71 @@ function bird(o: BirdOpts): AnimalRig {
   return { group: g, legs, head, tail: t, bodyHeight: o.bodyY };
 }
 
-// -- the roster: 16 real species ---------------------------------------------
+/** Town human. Legs + arms swing while walking. */
+function villager(): AnimalRig {
+  const g = new THREE.Group();
+  const shirts = ['#c96a4a', '#5a7fa8', '#7a9a5a', '#b08ab5', '#c9b14e', '#8a6a52'];
+  const trousers = ['#4a4a55', '#5a4a3a', '#3a4a44'];
+  const skins = ['#e8c49a', '#c99a6e', '#a5744a', '#8a5c38'];
+  const hairs = ['#3a2e22', '#6e5233', '#b3a184', '#8a8a8a', '#c96a2e'];
+  const pick = (a: string[]) => a[Math.floor(Math.random() * a.length)];
+  const shirt = pick(shirts);
+  const trouser = pick(trousers);
+  const skin = pick(skins);
+
+  const body = box(0.52, 0.68, 0.3, shirt);
+  body.position.y = 1.19;
+  g.add(body);
+
+  const head = new THREE.Group();
+  head.position.set(0, 1.53, 0.02);
+  const skull = box(0.3, 0.32, 0.3, skin);
+  skull.position.y = 0.18;
+  head.add(skull);
+  const hair = box(0.32, 0.12, 0.32, pick(hairs));
+  hair.position.y = 0.37;
+  head.add(hair);
+  g.add(head);
+
+  const legs: THREE.Object3D[] = [];
+  const addLimb = (x: number, y: number, w: number, len: number, color: string) => {
+    const pivot = new THREE.Group();
+    pivot.position.set(x, y, 0);
+    const limb = box(w, len, w, color);
+    limb.position.y = -len / 2;
+    pivot.add(limb);
+    g.add(pivot);
+    legs.push(pivot);
+  };
+  addLimb(-0.13, 0.86, 0.16, 0.84, trouser); // left leg
+  addLimb(0.13, 0.86, 0.16, 0.84, trouser); // right leg
+  addLimb(0.34, 1.48, 0.11, 0.62, shirt); // right arm (opposite phase of right leg)
+  addLimb(-0.34, 1.48, 0.11, 0.62, shirt); // left arm
+
+  return { group: g, legs, head, tail: null, bodyHeight: 1.3 };
+}
+
+/** Underwater fish — appears while the player wades. */
+function fish(bodyColor: string, finColor: string, len = 0.55): AnimalRig {
+  const g = new THREE.Group();
+  const body = box(0.14, 0.22, len, bodyColor);
+  g.add(body);
+  const headPivot = new THREE.Group();
+  headPivot.position.set(0, 0, len / 2);
+  g.add(headPivot);
+  const tail = new THREE.Group();
+  tail.position.set(0, 0, -len / 2);
+  const fin = box(0.03, 0.2, 0.18, finColor);
+  fin.position.set(0, 0, -0.09);
+  tail.add(fin);
+  g.add(tail);
+  const dorsal = box(0.03, 0.12, 0.2, finColor);
+  dorsal.position.set(0, 0.15, -0.05);
+  g.add(dorsal);
+  return { group: g, legs: [], head: headPivot, tail, bodyHeight: 0 };
+}
+
+// -- the roster: 30 real species ---------------------------------------------
 
 export const SPECIES: SpeciesDef[] = [
   {
@@ -244,6 +317,16 @@ export const SPECIES: SpeciesDef[] = [
     }),
   },
   {
+    id: 'pig', name: 'Domestic Pig', habitats: ['town', 'field'], rarity: 0.6, fleeDist: 8, speed: 5, baseScale: 0.9, flies: false, swims: false,
+    build: () => quadruped({
+      body: [0.56, 0.56, 1.05], bodyY: 0.52, bodyColor: '#e8a8a0',
+      head: [0.38, 0.38, 0.36], headFwd: 0.04, headUp: 0.04,
+      snout: [0.18, 0.14, 0.14, '#d98a84'], ears: [0.12, 0.14, 0.15], earColor: '#d98a84',
+      legH: 0.32, legW: 0.11,
+      tail: { size: [0.05, 0.05, 0.18], color: '#d98a84' },
+    }),
+  },
+  {
     id: 'badger', name: 'European Badger', habitats: ['forest'], rarity: 0.22, fleeDist: 14, speed: 6, baseScale: 0.7, flies: false, swims: false,
     build: () => quadruped({
       body: [0.5, 0.38, 0.85], bodyY: 0.32, bodyColor: '#77787c',
@@ -260,6 +343,15 @@ export const SPECIES: SpeciesDef[] = [
       head: [0.24, 0.24, 0.26], headFwd: 0.04, headUp: 0.2,
       ears: [0.06, 0.14, 0.08], legH: 0.18,
       tail: { size: [0.16, 0.34, 0.4], up: 0.2, color: '#c26a3e' },
+    }),
+  },
+  {
+    id: 'grey_squirrel', name: 'Grey Squirrel', habitats: ['forest', 'town'], rarity: 0.7, fleeDist: 8, speed: 6, baseScale: 0.34, flies: false, swims: false,
+    build: () => quadruped({
+      body: [0.3, 0.32, 0.5], bodyY: 0.3, bodyColor: '#8a8a90',
+      head: [0.24, 0.24, 0.26], headFwd: 0.04, headUp: 0.2,
+      ears: [0.06, 0.12, 0.08], legH: 0.18,
+      tail: { size: [0.16, 0.34, 0.42], up: 0.2, color: '#a5a5ab' },
     }),
   },
   {
@@ -308,12 +400,40 @@ export const SPECIES: SpeciesDef[] = [
     }),
   },
   {
-    id: 'cat', name: 'House Cat', habitats: ['town'], rarity: 0.8, fleeDist: 8, speed: 7, baseScale: 0.55, flies: false, swims: false,
+    id: 'cat', name: 'House Cat', habitats: ['town'], rarity: 0.7, fleeDist: 8, speed: 7, baseScale: 0.55, flies: false, swims: false, temperament: 'friendly',
     build: () => quadruped({
       body: [0.32, 0.34, 0.7], bodyY: 0.38, bodyColor: '#8a8a90',
       head: [0.28, 0.26, 0.26], headFwd: 0.04, headUp: 0.24,
       ears: [0.09, 0.12, 0.1], legH: 0.28, legW: 0.07,
       tail: { size: [0.08, 0.08, 0.5], up: 0.14 },
+    }),
+  },
+  {
+    id: 'black_cat', name: 'Black Cat', habitats: ['town'], rarity: 0.45, fleeDist: 8, speed: 7, baseScale: 0.55, flies: false, swims: false, temperament: 'friendly',
+    build: () => quadruped({
+      body: [0.32, 0.34, 0.7], bodyY: 0.38, bodyColor: '#2a2a2e',
+      head: [0.28, 0.26, 0.26], headFwd: 0.04, headUp: 0.24,
+      ears: [0.09, 0.12, 0.1], legH: 0.28, legW: 0.07,
+      tail: { size: [0.08, 0.08, 0.5], up: 0.14 },
+    }),
+  },
+  {
+    id: 'ginger_cat', name: 'Ginger Cat', habitats: ['town', 'field'], rarity: 0.4, fleeDist: 8, speed: 7, baseScale: 0.55, flies: false, swims: false, temperament: 'friendly',
+    build: () => quadruped({
+      body: [0.32, 0.34, 0.7], bodyY: 0.38, bodyColor: '#d98a3c',
+      head: [0.28, 0.26, 0.26], headFwd: 0.04, headUp: 0.24,
+      ears: [0.09, 0.12, 0.1], legH: 0.28, legW: 0.07, legColor: '#e8e2d4',
+      tail: { size: [0.08, 0.08, 0.5], up: 0.14 },
+    }),
+  },
+  {
+    id: 'dog', name: 'Farm Dog', habitats: ['town', 'field'], rarity: 0.55, fleeDist: 10, speed: 9, baseScale: 0.75, flies: false, swims: false, temperament: 'friendly',
+    build: () => quadruped({
+      body: [0.38, 0.42, 0.85], bodyY: 0.5, bodyColor: '#a5764a',
+      head: [0.3, 0.3, 0.32], headColor: '#8a5c38', headFwd: 0.06, headUp: 0.26,
+      snout: [0.14, 0.12, 0.18, '#5a4630'], ears: [0.1, 0.16, 0.11], earColor: '#5a4630',
+      legH: 0.36, legW: 0.09, legColor: '#e8e2d4',
+      tail: { size: [0.08, 0.08, 0.4], up: 0.2 },
     }),
   },
   {
@@ -325,11 +445,27 @@ export const SPECIES: SpeciesDef[] = [
     }),
   },
   {
+    id: 'mute_swan', name: 'Mute Swan', habitats: ['water'], rarity: 0.35, fleeDist: 14, speed: 5, baseScale: 0.95, flies: true, swims: true,
+    build: () => bird({
+      body: [0.5, 0.42, 0.9], bodyY: 0.32, bodyColor: '#efeade',
+      headSize: 0.18, neckLen: 0.48, neckColor: '#efeade', beakLen: 0.16, beakColor: '#d9762e',
+      legH: 0.12, legColor: '#3a3a3a',
+    }),
+  },
+  {
     id: 'grey_heron', name: 'Grey Heron', habitats: ['water'], rarity: 0.3, fleeDist: 22, speed: 6, baseScale: 1.0, flies: true, swims: false,
     build: () => bird({
       body: [0.4, 0.44, 0.8], bodyY: 0.72, bodyColor: '#9aa4ac',
       headColor: '#e8e6e0', headSize: 0.18, neckLen: 0.5, neckColor: '#d5d8da',
       beakLen: 0.4, beakColor: '#e0c23c', legH: 0.6, legColor: '#5a5a52',
+    }),
+  },
+  {
+    id: 'kingfisher', name: 'Kingfisher', habitats: ['water'], rarity: 0.18, fleeDist: 12, speed: 8, baseScale: 0.28, flies: true, swims: false,
+    build: () => bird({
+      body: [0.24, 0.26, 0.4], bodyY: 0.3, bodyColor: '#2e7fb5',
+      headColor: '#2e7fb5', breastColor: '#d97f36', headSize: 0.15, neckLen: 0.02,
+      beakLen: 0.22, beakColor: '#2a2a2e', legH: 0.1, legColor: '#d9762e',
     }),
   },
   {
@@ -348,6 +484,50 @@ export const SPECIES: SpeciesDef[] = [
       legH: 0.22, tailUp: false,
     }),
   },
+  {
+    id: 'blackbird', name: 'Blackbird', habitats: ['field', 'town', 'forest'], rarity: 0.9, fleeDist: 7, speed: 5, baseScale: 0.3, flies: true, swims: false,
+    build: () => bird({
+      body: [0.26, 0.26, 0.42], bodyY: 0.26, bodyColor: '#26262a',
+      headSize: 0.14, neckLen: 0.04, beakLen: 0.1, beakColor: '#e0a83c',
+      legH: 0.14, legColor: '#5a4630', tailUp: true,
+    }),
+  },
+  {
+    id: 'robin', name: 'European Robin', habitats: ['forest', 'town'], rarity: 0.75, fleeDist: 6, speed: 5, baseScale: 0.22, flies: true, swims: false,
+    build: () => bird({
+      body: [0.24, 0.24, 0.36], bodyY: 0.24, bodyColor: '#8a6f52',
+      breastColor: '#d95c30', headSize: 0.14, neckLen: 0.02, beakLen: 0.07, beakColor: '#3a3230',
+      legH: 0.12, legColor: '#5a4630', tailUp: true,
+    }),
+  },
+  {
+    id: 'magpie', name: 'Magpie', habitats: ['field', 'town'], rarity: 0.6, fleeDist: 10, speed: 6, baseScale: 0.4, flies: true, swims: false,
+    build: () => bird({
+      body: [0.28, 0.28, 0.5], bodyY: 0.28, bodyColor: '#efeade',
+      headColor: '#26262a', breastColor: '#26262a', headSize: 0.15, neckLen: 0.04,
+      beakLen: 0.1, beakColor: '#26262a', legH: 0.16, legColor: '#3a3a3a', tailUp: true,
+    }),
+  },
+  {
+    id: 'crow', name: 'Carrion Crow', habitats: ['field', 'forest'], rarity: 0.65, fleeDist: 12, speed: 6, baseScale: 0.42, flies: true, swims: false,
+    build: () => bird({
+      body: [0.3, 0.3, 0.52], bodyY: 0.3, bodyColor: '#1e1e24',
+      headSize: 0.16, neckLen: 0.04, beakLen: 0.14, beakColor: '#2a2a2e',
+      legH: 0.16, legColor: '#2a2a2e',
+    }),
+  },
+  {
+    id: 'villager', name: 'Villager', habitats: ['town'], rarity: 0.9, fleeDist: 3, speed: 3, baseScale: 1.0, flies: false, swims: false,
+    build: villager,
+  },
+  {
+    id: 'carp', name: 'Common Carp', habitats: ['water'], rarity: 0.8, fleeDist: 4, speed: 3.5, baseScale: 0.7, flies: false, swims: false, aquatic: true,
+    build: () => fish('#a58a4a', '#8a6f3a'),
+  },
+  {
+    id: 'pike', name: 'Northern Pike', habitats: ['water'], rarity: 0.3, fleeDist: 5, speed: 6, baseScale: 1.0, flies: false, swims: false, aquatic: true,
+    build: () => fish('#5a7a4a', '#46603a', 0.75),
+  },
 ];
 
 export const SPECIES_BY_ID = new Map(SPECIES.map((s) => [s.id, s]));
@@ -356,36 +536,36 @@ export const SPECIES_BY_ID = new Map(SPECIES.map((s) => [s.id, s]));
 
 export interface SizeRoll {
   factor: number; // multiplier on baseScale
-  label: string; // '', 'Tiny', 'Massive', ...
+  label: string; // '', 'Tiny', 'MASSIVE', ...
   bonus: number; // photo score multiplier for extremity
 }
 
 /**
- * Animals vary from tiny to massive on a bell curve — the extremes are rare
- * and worth more points. factor spans roughly 0.35x to 2.7x.
+ * Animals vary from teeny-tiny to way-larger-than-life on a bell curve —
+ * the extremes are rare and worth more points. factor spans ~0.22x to ~4.6x.
  */
 export function rollSize(rand: () => number): SizeRoll {
   const g = (rand() + rand() + rand()) / 3; // bell-shaped in [0,1]
-  const factor = Math.pow(2, (g - 0.5) * 2.9);
+  const factor = Math.pow(2, (g - 0.5) * 4.4);
   return describeSize(factor);
 }
 
 export function describeSize(factor: number): SizeRoll {
   const e = Math.abs(Math.log2(factor));
   let label = '';
-  if (factor <= 0.45) label = 'Teeny-tiny';
-  else if (factor <= 0.62) label = 'Tiny';
-  else if (factor <= 0.8) label = 'Small';
-  else if (factor >= 2.3) label = 'MASSIVE';
-  else if (factor >= 1.75) label = 'Huge';
-  else if (factor >= 1.3) label = 'Big';
-  const bonus = 1 + e * 1.6; // ~1x at normal size, up to ~3.3x at the extremes
+  if (factor <= 0.32) label = 'Teeny-tiny';
+  else if (factor <= 0.5) label = 'Tiny';
+  else if (factor <= 0.75) label = 'Small';
+  else if (factor >= 3.4) label = 'MASSIVE';
+  else if (factor >= 2.2) label = 'Huge';
+  else if (factor >= 1.45) label = 'Big';
+  const bonus = 1 + e * 1.5; // ~1x at normal size, up to ~4.3x at the extremes
   return { factor, label, bonus };
 }
 
 // ---------------------------------------------------------------- animals
 
-type AIState = 'idle' | 'graze' | 'wander' | 'alert' | 'flee' | 'flyaway';
+type AIState = 'idle' | 'graze' | 'wander' | 'alert' | 'flee' | 'flyaway' | 'approach';
 
 export class Animal {
   readonly def: SpeciesDef;
@@ -422,27 +602,38 @@ export class Animal {
   }
 
   get boundRadius(): number {
-    return Math.max(1.0, 1.6 * this.scale);
+    return Math.max(0.55, 1.6 * this.scale);
+  }
+
+  /** In the air right now? (bonus points for birds photographed in flight) */
+  get flying(): boolean {
+    return this.state === 'flyaway';
   }
 
   private groundY(x: number, z: number): number {
+    if (this.def.aquatic) return WATER_Y - 0.4;
     if (this.def.swims) return Math.max(this.world.heightAt(x, z), WATER_Y - 0.08);
     return this.world.heightAt(x, z);
+  }
+
+  /** Is the terrain at (x,z) suitable for this animal to move onto? */
+  private terrainOk(x: number, z: number): boolean {
+    const h = this.world.heightAt(x, z);
+    if (this.def.aquatic) return h < WATER_Y - 0.7;
+    if (this.def.swims) return h < WATER_Y - 0.2;
+    return h > WATER_Y + 0.15;
   }
 
   private enterState(s: AIState) {
     this.state = s;
     this.stateT = 0;
     if (s === 'wander') {
-      // pick a target that stays in this animal's element
       for (let i = 0; i < 8; i++) {
         const a = Math.random() * Math.PI * 2;
         const d = 5 + Math.random() * 18;
         const tx = this.position.x + Math.cos(a) * d;
         const tz = this.position.z + Math.sin(a) * d;
-        const h = this.world.heightAt(tx, tz);
-        const wet = h < WATER_Y + 0.15;
-        if (this.def.swims ? h < WATER_Y - 0.2 : !wet) {
+        if (this.terrainOk(tx, tz)) {
           this.target.set(tx, tz);
           return;
         }
@@ -452,6 +643,7 @@ export class Animal {
   }
 
   spook(playerPos: THREE.Vector3) {
+    if (this.def.temperament === 'friendly') return; // nothing scares a farm cat
     if (this.state === 'flee' || this.state === 'flyaway' || this.state === 'alert') return;
     this.enterState('alert');
     const dx = this.position.x - playerPos.x;
@@ -464,10 +656,15 @@ export class Animal {
     this.animT += dt;
     const p = this.position;
     const distToPlayer = Math.hypot(p.x - playerPos.x, p.z - playerPos.z);
+    const friendly = this.def.temperament === 'friendly';
 
-    // detection: closer + noisier player = spook
-    if (this.state !== 'flee' && this.state !== 'flyaway' && this.state !== 'alert') {
+    if (!friendly && this.state !== 'flee' && this.state !== 'flyaway' && this.state !== 'alert') {
+      // shy: closer + noisier player = spook
       if (distToPlayer < this.def.fleeDist * playerNoise) this.spook(playerPos);
+    }
+    if (friendly && (this.state === 'idle' || this.state === 'graze' || this.state === 'wander')) {
+      // friendly: notice the player and come say hello
+      if (distToPlayer < 18 && distToPlayer > 2.4) this.enterState('approach');
     }
 
     this.moving = false;
@@ -478,6 +675,16 @@ export class Animal {
       case 'graze':
         if (this.stateT > 2 + Math.random() * 3) this.enterState(Math.random() < 0.6 ? 'wander' : 'idle');
         break;
+      case 'approach': {
+        if (distToPlayer <= 2.4 || distToPlayer > 26) {
+          this.enterState('idle');
+          break;
+        }
+        const want = Math.atan2(playerPos.x - p.x, playerPos.z - p.z);
+        this.turnToward(want, dt);
+        this.stepForward(this.def.speed * 0.45, dt);
+        break;
+      }
       case 'alert': {
         // frozen, head up, facing the player — this is the photo window
         this.rig.group.rotation.y = this.heading;
@@ -492,18 +699,16 @@ export class Animal {
       }
       case 'flee': {
         const speed = this.def.speed * (0.75 + 0.25 * Math.min(1.6, this.size.factor));
-        let nx = p.x + Math.sin(this.heading) * speed * dt;
-        let nz = p.z + Math.cos(this.heading) * speed * dt;
-        const h = this.world.heightAt(nx, nz);
-        if (!this.def.swims && h < WATER_Y + 0.1) {
-          this.heading += 1.8 * dt * 40 * dt + 0.8; // veer off water
-          nx = p.x;
-          nz = p.z;
+        const nx = p.x + Math.sin(this.heading) * speed * dt;
+        const nz = p.z + Math.cos(this.heading) * speed * dt;
+        if (!this.terrainOk(nx, nz)) {
+          this.heading += 0.9; // veer away from unsuitable terrain
+        } else {
+          const [cx, cz] = this.world.collide(nx, nz, 0.5 * this.scale);
+          p.set(cx, this.groundY(cx, cz), cz);
+          this.moving = true;
         }
-        [nx, nz] = this.world.collide(nx, nz, 0.5 * this.scale);
-        p.set(nx, this.groundY(nx, nz), nz);
         this.rig.group.rotation.y = this.heading;
-        this.moving = true;
         if (distToPlayer > this.def.fleeDist * 3 + 25 || this.stateT > 8) this.enterState('wander');
         break;
       }
@@ -525,30 +730,27 @@ export class Animal {
           this.enterState(Math.random() < 0.4 ? 'graze' : 'idle');
           break;
         }
-        const want = Math.atan2(dx, dz);
-        let dh = want - this.heading;
-        while (dh > Math.PI) dh -= Math.PI * 2;
-        while (dh < -Math.PI) dh += Math.PI * 2;
-        this.heading += THREE.MathUtils.clamp(dh, -2.4 * dt, 2.4 * dt);
-        const speed = this.def.speed * 0.28;
-        let nx = p.x + Math.sin(this.heading) * speed * dt;
-        let nz = p.z + Math.cos(this.heading) * speed * dt;
-        [nx, nz] = this.world.collide(nx, nz, 0.5 * this.scale);
-        p.set(nx, this.groundY(nx, nz), nz);
-        this.rig.group.rotation.y = this.heading;
-        this.moving = true;
+        this.turnToward(Math.atan2(dx, dz), dt);
+        this.stepForward(this.def.speed * 0.28, dt);
         break;
       }
     }
 
     // procedural animation
-    const rate = this.moving ? (this.state === 'flee' || this.state === 'flyaway' ? 14 : 7) : 0;
+    const fast = this.state === 'flee' || this.state === 'flyaway';
+    const rate = this.moving ? (fast ? 14 : 7) : 0;
     const amp = this.moving ? 0.55 : 0;
     this.rig.legs.forEach((leg, i) => {
       const phase = i % 2 === 0 ? 0 : Math.PI;
       leg.rotation.x = Math.sin(this.animT * rate + phase) * amp;
     });
-    if (this.rig.tail) this.rig.tail.rotation.y = Math.sin(this.animT * 3.2) * 0.25;
+    if (this.def.aquatic) {
+      // fish: constant tail wiggle + gentle bob below the surface
+      if (this.rig.tail) this.rig.tail.rotation.y = Math.sin(this.animT * (this.moving ? 9 : 4)) * 0.5;
+      p.y = WATER_Y - 0.4 + Math.sin(this.animT * 1.7) * 0.08;
+    } else if (this.rig.tail) {
+      this.rig.tail.rotation.y = Math.sin(this.animT * 3.2) * 0.25;
+    }
     if (this.state === 'graze') {
       this.rig.head.rotation.x = THREE.MathUtils.lerp(this.rig.head.rotation.x, 0.85, dt * 5);
     } else if (this.state === 'alert') {
@@ -557,36 +759,83 @@ export class Animal {
       this.rig.head.rotation.x = THREE.MathUtils.lerp(this.rig.head.rotation.x, Math.sin(this.animT * 1.4) * 0.06, dt * 4);
     }
   }
+
+  private turnToward(want: number, dt: number) {
+    let dh = want - this.heading;
+    while (dh > Math.PI) dh -= Math.PI * 2;
+    while (dh < -Math.PI) dh += Math.PI * 2;
+    this.heading += THREE.MathUtils.clamp(dh, -2.4 * dt, 2.4 * dt);
+  }
+
+  private stepForward(speed: number, dt: number) {
+    const p = this.position;
+    const nx = p.x + Math.sin(this.heading) * speed * dt;
+    const nz = p.z + Math.cos(this.heading) * speed * dt;
+    if (!this.terrainOk(nx, nz)) {
+      this.enterState('idle');
+      return;
+    }
+    const [cx, cz] = this.world.collide(nx, nz, 0.5 * this.scale);
+    p.set(cx, this.groundY(cx, cz), cz);
+    this.rig.group.rotation.y = this.heading;
+    this.moving = true;
+  }
 }
 
 // ---------------------------------------------------------------- spawner
 
-const MAX_ANIMALS = 14;
+const MAX_ANIMALS = 15;
+const MAX_FISH = 3;
 const SPAWN_MIN = 45;
 const SPAWN_MAX = 110;
 const DESPAWN = 150;
 
+const LAND_SPECIES = SPECIES.filter((s) => !s.aquatic);
+const FISH_SPECIES = SPECIES.filter((s) => s.aquatic);
+
 export class AnimalSpawner {
   readonly animals: Animal[] = [];
   private cooldown = 0;
+  private fishCooldown = 0;
 
   constructor(private world: World, private scene: THREE.Scene) {}
 
-  update(dt: number, playerPos: THREE.Vector3, playerNoise: number) {
+  update(dt: number, playerPos: THREE.Vector3, playerNoise: number, playerWaterDepth = 0) {
     this.cooldown -= dt;
+    this.fishCooldown -= dt;
     for (let i = this.animals.length - 1; i >= 0; i--) {
       const a = this.animals[i];
       a.update(dt, playerPos, playerNoise);
       const d = Math.hypot(a.position.x - playerPos.x, a.position.z - playerPos.z);
-      if (!a.alive || d > DESPAWN) {
+      const range = a.def.aquatic ? 32 : DESPAWN;
+      if (!a.alive || d > range) {
         this.scene.remove(a.rig.group);
         this.animals.splice(i, 1);
       }
     }
-    if (this.animals.length < MAX_ANIMALS && this.cooldown <= 0) {
+    const landCount = this.animals.filter((a) => !a.def.aquatic).length;
+    if (landCount < MAX_ANIMALS && this.cooldown <= 0) {
       this.cooldown = 0.6;
-      for (let i = 0; i < 3 && this.animals.length < MAX_ANIMALS; i++) this.trySpawn(playerPos);
+      for (let i = 0; i < 3; i++) this.trySpawn(playerPos);
     }
+    // fish only show up while the player is wading
+    const fishCount = this.animals.length - landCount;
+    if (playerWaterDepth > 0.35 && fishCount < MAX_FISH && this.fishCooldown <= 0) {
+      this.fishCooldown = 1.4;
+      this.trySpawnFish(playerPos);
+    }
+  }
+
+  private weightedPick(pool: SpeciesDef[]): SpeciesDef | null {
+    if (pool.length === 0) return null;
+    let totalW = 0;
+    for (const s of pool) totalW += s.rarity;
+    let pick = Math.random() * totalW;
+    for (const s of pool) {
+      pick -= s.rarity;
+      if (pick <= 0) return s;
+    }
+    return pool[pool.length - 1];
   }
 
   private trySpawn(playerPos: THREE.Vector3) {
@@ -596,22 +845,28 @@ export class AnimalSpawner {
     const z = playerPos.z + Math.sin(ang) * dist;
     if (Math.abs(x) > 570 || Math.abs(z) > 570) return;
     const habitat = this.world.habitatAt(x, z);
-    const pool = SPECIES.filter((s) => s.habitats.includes(habitat));
-    if (pool.length === 0) return;
-    let totalW = 0;
-    for (const s of pool) totalW += s.rarity;
-    let pick = Math.random() * totalW;
-    let def = pool[0];
-    for (const s of pool) {
-      pick -= s.rarity;
-      if (pick <= 0) {
-        def = s;
-        break;
-      }
-    }
-    // cap flocks of the same species
+    const pool = LAND_SPECIES.filter((s) => s.habitats.includes(habitat));
+    const def = this.weightedPick(pool);
+    if (!def) return;
     if (this.animals.filter((a) => a.def.id === def.id).length >= 3) return;
     if (def.swims && this.world.heightAt(x, z) > WATER_Y - 0.15) return;
+    if (!def.swims && this.world.heightAt(x, z) < WATER_Y + 0.15) return;
+    this.spawn(def, x, z);
+  }
+
+  private trySpawnFish(playerPos: THREE.Vector3) {
+    const ang = Math.random() * Math.PI * 2;
+    const dist = 3 + Math.random() * 8;
+    const x = playerPos.x + Math.cos(ang) * dist;
+    const z = playerPos.z + Math.sin(ang) * dist;
+    if (this.world.heightAt(x, z) > WATER_Y - 0.75) return;
+    const def = this.weightedPick(FISH_SPECIES);
+    if (!def) return;
+    if (this.animals.filter((a) => a.def.id === def.id).length >= 2) return;
+    this.spawn(def, x, z);
+  }
+
+  private spawn(def: SpeciesDef, x: number, z: number) {
     const animal = new Animal(def, x, z, rollSize(Math.random), this.world);
     this.scene.add(animal.rig.group);
     this.animals.push(animal);

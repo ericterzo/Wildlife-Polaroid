@@ -121,6 +121,18 @@ body {
   100% { opacity: 0; }
 }
 
+#water-overlay {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 0;
+  background: linear-gradient(rgba(120, 190, 220, 0.55), rgba(35, 90, 130, 0.85));
+  border-top: 3px solid rgba(230, 245, 252, 0.65);
+  transition: height 0.25s ease-out;
+  pointer-events: none;
+}
+
 #flash {
   position: absolute;
   inset: 0;
@@ -157,7 +169,7 @@ body {
   position: absolute;
   inset: 0;
   background: #ded9cb;
-  animation: develop-fade 2.6s ease forwards;
+  animation: develop-fade var(--dev-time, 2.6s) ease forwards;
   transform: rotate(3deg);
 }
 @keyframes eject {
@@ -227,9 +239,32 @@ body.touch #develop img {
   height: 56px;
 }
 
-#t-walk {
+#joystick {
+  position: absolute;
+  pointer-events: auto;
   left: max(22px, env(safe-area-inset-left));
   bottom: max(24px, env(safe-area-inset-bottom));
+  width: 128px;
+  height: 128px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  background: rgba(20, 26, 22, 0.35);
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+#joystick-knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 56px;
+  height: 56px;
+  margin: -28px 0 0 -28px;
+  border-radius: 50%;
+  background: rgba(233, 228, 213, 0.85);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
+  transition: transform 0.06s linear;
 }
 #t-snap {
   right: max(22px, env(safe-area-inset-right));
@@ -393,6 +428,60 @@ button.primary:hover {
 #pause-stats {
   margin-bottom: 18px;
   color: #6a635a;
+}
+
+/* -------------------------------------------------------- instructions */
+
+#help {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(14, 20, 16, 0.9);
+}
+.help-panel {
+  max-width: 640px;
+  max-height: 88vh;
+  overflow-y: auto;
+  text-align: left;
+}
+.help-panel h2 {
+  text-align: center;
+}
+.help-goal {
+  font-style: italic;
+  color: #6a635a;
+  margin-bottom: 14px;
+}
+.help-cols {
+  display: flex;
+  gap: 26px;
+  margin-bottom: 8px;
+}
+.help-col {
+  flex: 1;
+}
+.help-panel h3 {
+  font-size: 17px;
+  margin: 10px 0 6px;
+  border-bottom: 1px solid #d5cbb5;
+  padding-bottom: 3px;
+}
+.help-panel ul {
+  list-style: none;
+  font-size: 14px;
+  line-height: 1.65;
+}
+.help-scoring ul li {
+  margin-bottom: 4px;
+}
+@media (max-width: 640px) {
+  .help-cols {
+    flex-direction: column;
+    gap: 4px;
+  }
 }
 
 /* ------------------------------------------------------------ photo book */

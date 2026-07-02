@@ -111,19 +111,20 @@ export class UI {
     el.classList.add('go');
   }
 
-  /** The little polaroid that ejects and develops in the corner. */
-  develop(dataUrl: string) {
+  /** The polaroid that ejects and develops on screen. Lasts `seconds`. */
+  develop(dataUrl: string, seconds = 2.6) {
     const holder = $('develop');
     holder.innerHTML = '';
     const wrap = document.createElement('div');
     wrap.className = 'dev-wrap';
+    wrap.style.setProperty('--dev-time', `${seconds}s`);
     const img = document.createElement('img');
     img.src = dataUrl;
     wrap.appendChild(img);
     holder.appendChild(wrap);
     setTimeout(() => {
       if (holder.firstChild === wrap) holder.innerHTML = '';
-    }, 4200);
+    }, (seconds + 1.6) * 1000);
   }
 
   // ----------------------------------------------------------- photobook

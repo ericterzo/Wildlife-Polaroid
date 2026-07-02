@@ -9,14 +9,18 @@ export interface PhotoRecord {
   sizeFactor: number;
   sizeLabel: string;
   day: number;
+  combo?: number; // animals in frame (>= 2 means combo bonus was applied)
+  flying?: boolean; // bird photographed in flight
   dataUrl: string; // composited polaroid JPEG
 }
 
-export interface ShotResult {
-  subject: Animal | null;
+export interface ShotScore {
+  subject: Animal | null; // the closest animal in frame — the album entry
+  extras: Animal[]; // everything else that made it into the shot
   stars: number;
-  points: number;
-  dataUrl: string;
+  quality: number; // 0..1 framing quality of the subject
+  combo: number; // total animals in frame
+  flying: boolean;
 }
 
 const MAX_PHOTO_DIST = 60;
@@ -26,13 +30,24 @@ function rarityPoints(rarity: number): number {
   return Math.round(18 / rarity);
 }
 
-export function scoreShot(camera: THREE.PerspectiveCamera, animals: Animal[], occluders: THREE.Object3D[]): { subject: Animal | null; stars: number; centerOffset: number } {
+/**
+ * Score a shot. Every un-occluded animal in frame counts; the CLOSEST one is
+ * the subject the photo is filed under. Framing quality blends how centered
+ * the subject is with how much of the frame it fills — and for tiny
+ * specimens, centering is nearly everything, since they can't fill a frame.
+ */
+export function scoreShot(camera: THREE.PerspectiveCamera, animals: Animal[], occluders: THREE.Object3D[]): ShotScore {
   const raycaster = new THREE.Raycaster();
   const ndc = new THREE.Vector3();
-  let best: Animal | null = null;
-  let bestScore = -Infinity;
-  let bestOffset = 1;
-  let bestApparent = 0;
+  const tanHalfFov = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+
+  interface Hit {
+    animal: Animal;
+    dist: number;
+    offset: number;
+    occupancy: number;
+  }
+  const hits: Hit[] = [];
 
   for (const a of animals) {
     const focus = a.focusPoint;
@@ -45,30 +60,54 @@ export function scoreShot(camera: THREE.PerspectiveCamera, animals: Animal[], oc
     const dir = focus.clone().sub(camera.position).normalize();
     raycaster.set(camera.position, dir);
     raycaster.far = dist - a.boundRadius;
-    const hits = raycaster.intersectObjects(occluders, false);
-    if (hits.length > 0) continue;
+    if (raycaster.far > 0.1 && raycaster.intersectObjects(occluders, false).length > 0) continue;
 
-    const offset = Math.hypot(ndc.x, ndc.y);
-    const apparent = a.boundRadius / dist; // rough size on screen
-    const score = apparent * 3 + (1 - offset);
-    if (score > bestScore) {
-      bestScore = score;
-      best = a;
-      bestOffset = offset;
-      bestApparent = apparent;
-    }
+    // occupancy: rough fraction of the frame height the animal fills
+    // (zooming in raises it — the telephoto is how you "get closer" safely)
+    const occupancy = a.boundRadius / (dist * tanHalfFov);
+    hits.push({ animal: a, dist, offset: Math.hypot(ndc.x, ndc.y), occupancy });
   }
 
-  if (!best) return { subject: null, stars: 0, centerOffset: 1 };
+  if (hits.length === 0) return { subject: null, extras: [], stars: 0, quality: 0, combo: 0, flying: false };
+
+  hits.sort((h1, h2) => h1.dist - h2.dist);
+  const main = hits[0];
+  const quality = framingQuality(main.animal, main.offset, main.occupancy);
+
+  // Harder stars: 3 means genuinely well-shot — filled frame AND centered.
   let stars = 1;
-  if (bestApparent > 0.05) stars++; // filled the frame
-  if (bestOffset < 0.32) stars++; // well centered
-  return { subject: best, stars, centerOffset: bestOffset };
+  if (quality >= 0.45) stars = 2;
+  if (quality >= 0.75) stars = 3;
+
+  return {
+    subject: main.animal,
+    extras: hits.slice(1).map((h) => h.animal),
+    stars,
+    quality,
+    combo: hits.length,
+    flying: main.animal.flying,
+  };
 }
 
-export function computePoints(animal: Animal, stars: number): number {
-  const size = describeSize(animal.size.factor);
-  return Math.round(rarityPoints(animal.def.rarity) * stars * size.bonus);
+/**
+ * 0..1 framing quality. Centering and frame occupancy, weighted by specimen
+ * size: a MASSIVE cow should fill the frame; a teeny-tiny robin physically
+ * can't, so its score comes almost entirely from how centered it is.
+ */
+function framingQuality(a: Animal, offset: number, occupancy: number): number {
+  const center01 = THREE.MathUtils.clamp(1 - offset / 0.85, 0, 1);
+  const occ01 = THREE.MathUtils.clamp(occupancy / 0.55, 0, 1);
+  const occWeight = 0.6 * THREE.MathUtils.clamp(a.size.factor / 0.8, 0.15, 1);
+  return occWeight * occ01 + (1 - occWeight) * center01;
+}
+
+export function computePoints(subject: Animal, quality: number, combo: number, flying: boolean): number {
+  const size = describeSize(subject.size.factor);
+  const base = rarityPoints(subject.def.rarity) * size.bonus;
+  const framing = 0.35 + 2.4 * Math.pow(quality, 1.25); // bad framing ~0.4x, perfect ~2.75x
+  const comboMult = 1 + 0.4 * Math.min(4, Math.max(0, combo - 1)); // +40% per extra animal, cap +160%
+  const flyMult = flying ? 1.5 : 1;
+  return Math.max(1, Math.round(base * framing * comboMult * flyMult));
 }
 
 /**
@@ -126,5 +165,9 @@ export function captionFor(record: PhotoRecord): { main: string; sub: string } {
   const name = def ? def.name : record.species;
   const main = record.sizeLabel ? `${record.sizeLabel} ${name}` : name;
   const stars = '★'.repeat(record.stars) + '☆'.repeat(3 - record.stars);
-  return { main, sub: `${stars} · Day ${record.day} · ${record.points} pts` };
+  const tags: string[] = [];
+  if (record.flying) tags.push('in flight!');
+  if ((record.combo ?? 1) > 1) tags.push(`×${record.combo} combo`);
+  const tail = tags.length > 0 ? ' · ' + tags.join(' · ') : '';
+  return { main, sub: `${stars} · Day ${record.day} · ${record.points} pts${tail}` };
 }
