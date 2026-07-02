@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Dyson Dirt Dash</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;overflow:hidden;background:#f2f2f2;cursor:default;font-family:Arial,sans-serif;user-select:none;touch-action:none;-webkit-user-select:none}
+#hud{position:fixed;top:12px;left:12px;z-index:20;background:rgba(255,255,255,.92);border:2px solid #ddd;border-radius:10px;padding:10px 12px;min-width:255px;color:#222;box-shadow:0 3px 10px rgba(0,0,0,.12)}
+#score{font-size:24px;font-weight:bold;margin-bottom:2px}
+#comboText{font-size:14px;font-weight:bold;color:#6d00ff;min-height:17px;margin-bottom:4px}
+.bar-wrap{margin-top:7px}.label-row{display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px}.bar{width:100%;height:14px;background:#ddd;border-radius:999px;overflow:hidden;border:1px solid #aaa}.bar-fill{height:100%;transition:width .12s linear,background .12s linear}#batteryFill{width:100%;background:#00c853}#binFill{width:0;background:#8b5a2b}#modeText{margin-top:8px;font-size:13px;font-weight:bold;color:#555}
+#timer{position:fixed;top:15px;left:50%;transform:translateX(-50%);font-size:36px;font-weight:bold;z-index:20;background:rgba(255,255,255,.92);padding:6px 20px;border-radius:12px;border:2px solid #ddd;box-shadow:0 3px 10px rgba(0,0,0,.12)}
+#timer.low{color:#d32f2f;border-color:#d32f2f;animation:timerPulse 1s ease-in-out infinite}
+@keyframes timerPulse{0%,100%{transform:translateX(-50%) scale(1)}50%{transform:translateX(-50%) scale(1.09)}}
+#instructions{position:fixed;right:12px;top:12px;z-index:20;max-width:310px;background:rgba(255,255,255,.92);border:2px solid #ddd;border-radius:10px;padding:10px 12px;font-size:13px;line-height:1.35;color:#222;box-shadow:0 3px 10px rgba(0,0,0,.12)}
+.station{position:fixed;width:150px;height:110px;z-index:10;border-radius:14px;border:3px solid #333;background:#fff;display:flex;justify-content:center;align-items:center;text-align:center;font-weight:bold;color:#222;box-shadow:0 3px 10px rgba(0,0,0,.15)}
+#batteryTable{right:20px;bottom:20px;background:#e6fbff;border-color:#00a6c8}#binStation{left:20px;bottom:20px;background:#fff4df;border-color:#a66b00}
+.dirt{position:absolute;z-index:5}.crumb{width:14px;height:14px;background:#b47a38;border-radius:35% 55% 40% 60%;box-shadow:inset -2px -2px 0 rgba(0,0,0,.12)}.cereal{width:22px;height:22px;background:#e0b03c;border:5px solid #c88b21;border-radius:50%}.petHair{width:36px;height:8px;background:#555;border-radius:999px;transform:rotate(25deg)}
+.bonus{width:26px;height:26px;background:radial-gradient(circle at 35% 35%,#ffe680,#e6a800);border-radius:45% 55% 50% 50%;box-shadow:0 0 12px 4px rgba(255,200,0,.65);animation:bonusPulse .8s ease-in-out infinite}
+@keyframes bonusPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.18)}}
+.dirt.fading{animation:blink .25s linear infinite}
+@keyframes blink{50%{opacity:.25}}
+.floatText{position:absolute;z-index:30;font-weight:bold;pointer-events:none;color:#222;animation:floatUp .7s ease-out forwards}.floatText.big{color:#6d00ff;font-size:20px}@keyframes floatUp{from{transform:translateY(0);opacity:1}to{transform:translateY(-28px);opacity:0}}
+#vacuum{position:absolute;pointer-events:none;z-index:25;left:-300px}#suctionCone{opacity:0;transition:opacity .08s linear}#vacuum.vacuuming #suctionCone{opacity:.35}#vacuum.vacuuming #headGlow{fill:#00f0ff}
+#statusMessage{position:fixed;left:50%;bottom:35px;transform:translateX(-50%);background:rgba(0,0,0,.78);color:white;padding:10px 18px;border-radius:999px;font-size:16px;z-index:40;display:none}
+#startScreen{position:fixed;inset:0;background:rgba(0,0,0,.78);display:flex;justify-content:center;align-items:center;z-index:110;cursor:default}#startCard{background:white;width:min(620px,92vw);max-height:92vh;overflow-y:auto;border-radius:20px;padding:34px;text-align:left;box-shadow:0 8px 30px rgba(0,0,0,.35);color:#222}#startCard h1{margin:0 0 6px;font-size:40px;text-align:center}#startBest{text-align:center;font-weight:bold;color:#6d00ff;margin:0 0 14px}#startCard ul{margin:14px 0 22px;padding-left:22px;line-height:1.45}#startButton{display:block;margin:0 auto;font-size:22px;padding:12px 28px;border-radius:999px;border:none;background:#6d00ff;color:white;font-weight:bold;cursor:pointer}#startButton:hover{background:#5300c9}
+#endScreen{position:fixed;inset:0;background:rgba(0,0,0,.72);display:none;justify-content:center;align-items:center;z-index:100;cursor:default}#endCard{background:white;width:min(520px,90vw);border-radius:20px;padding:36px;text-align:center;box-shadow:0 8px 30px rgba(0,0,0,.35)}#endCard h1{margin:0 0 12px;font-size:42px}#finalScore{font-size:78px;font-weight:bold;color:#6d00ff;margin:12px 0 6px}#bestScore{font-size:18px;font-weight:bold;margin-bottom:6px}#bestScore.newBest{color:#d4a000}#statsLine{font-size:14px;color:#555;margin-bottom:24px}#retryButton{font-size:22px;padding:12px 26px;border-radius:999px;border:none;background:#6d00ff;color:white;font-weight:bold;cursor:pointer}#retryButton:hover{background:#5300c9}
+</style>
+</head>
+<body>
+<div id="hud"><div id="score">Score: 0</div><div id="comboText"></div><div class="bar-wrap"><div class="label-row"><span>Battery</span><span id="batteryText">100%</span></div><div class="bar"><div id="batteryFill" class="bar-fill"></div></div></div><div class="bar-wrap"><div class="label-row"><span>Dust bin</span><span id="binText">0%</span></div><div class="bar"><div id="binFill" class="bar-fill"></div></div></div><div id="modeText">Press Start</div><div style="font-size:12px;margin-top:8px">Crumbs +1 | Cereal +3 | Pet hair +5 | Dust bunny +10</div></div>
+<div id="timer">60</div>
+<div id="instructions"><b>How to play</b><br>Move the vacuum with the mouse (or finger).<br><b>Hold left mouse button</b> (or touch) to vacuum dirt.<br>Nearby dirt is sucked toward the nozzle.<br>Chain pickups quickly to build a combo multiplier.<br>Battery empty? Move to the battery table.<br>Bin full? Move to the dust-bin station.<br>Golden dust bunnies are worth 10 but vanish fast!</div>
+<div id="batteryTable" class="station">Battery<br>table<br>swap here</div><div id="binStation" class="station">Dust bin<br>empty here</div><div id="statusMessage"></div>
+<svg id="vacuum" width="185" height="95" viewBox="0 0 185 95"><polygon id="suctionCone" points="2,66 55,48 55,84" fill="#00d4ff"/><rect x="2" y="58" width="50" height="16" rx="5" fill="#343434"/><rect id="headGlow" x="8" y="62" width="35" height="5" rx="2" fill="#00d4ff"/><line x1="45" y1="60" x2="118" y2="24" stroke="#888" stroke-width="8" stroke-linecap="round"/><line x1="45" y1="60" x2="118" y2="24" stroke="#c9c9c9" stroke-width="3" stroke-linecap="round"/><rect x="112" y="12" width="42" height="34" rx="8" fill="#6d00ff"/><circle cx="132" cy="29" r="12" fill="#00d4ff"/><circle cx="132" cy="29" r="6" fill="#111"/><path d="M145 17 C168 18,166 54,145 52" fill="none" stroke="#444" stroke-width="7" stroke-linecap="round"/><rect x="104" y="18" width="15" height="11" rx="3" fill="#ff3b30"/></svg>
+<div id="startScreen"><div id="startCard"><h1>Dyson Dirt Dash</h1><p id="startBest"></p><p><b>Goal:</b> collect as many points as possible in 60 seconds.</p><ul><li>Move the vacuum with the mouse, or drag your finger on touch screens.</li><li>Hold the <b>left mouse button</b> (or keep touching) to vacuum. Nearby dirt gets pulled into the nozzle.</li><li>Chain pickups within 1.5 seconds to build a <b>combo</b>: 5 in a row = double points, 10 in a row = triple points.</li><li>The battery drains only while vacuuming. Swap battery at the blue table.</li><li>The dust bin fills as you collect dirt. Empty it at the brown bin station.</li><li>Crumbs = 1 point, cereal = 3 points, pet hair = 5 points.</li><li>Rare <b>golden dust bunnies</b> are worth 10 points but disappear after a few seconds.</li><li>There are always at least <b>5 dirt pieces</b> on screen, with larger waves at 40, 30 and 20 seconds remaining.</li><li>When the bin is nearly full, the vacuum sound pitch rises.</li><li>The game pauses automatically if you switch tabs.</li></ul><button id="startButton">Start game</button></div></div>
+<div id="endScreen"><div id="endCard"><h1>Time up</h1><div>Your final score</div><div id="finalScore">0</div><div id="bestScore"></div><div id="statsLine"></div><button id="retryButton">Retry</button></div></div>
+<script>
+let score=0,battery=100,binFill=0,timeLeft=60,gameRunning=false,paused=false,pointerX=innerWidth/2,pointerY=innerHeight/2,pointerDown=false,spawnRate=900,spawnTimer,secondTimer,drainTimer,minimumDirtTimer;
+let combo=0,comboExpires=0,collectedCounts={crumb:0,cereal:0,petHair:0,bonus:0};
+const dirts=[];
+const BATTERY_DRAIN_PER_TICK=2.8,DRAIN_TICK_MS=250,MIN_DIRT_ON_SCREEN=5,COLLECT_RADIUS=30,ATTRACT_RADIUS=110,COMBO_WINDOW_MS=1500,BONUS_CHANCE=.07,BONUS_LIFETIME_MS=5000,BEST_SCORE_KEY='dysonDirtDashBest';
+const vacuum=document.getElementById('vacuum'),scoreText=document.getElementById('score'),comboText=document.getElementById('comboText'),batteryFillEl=document.getElementById('batteryFill'),batteryText=document.getElementById('batteryText'),binFillEl=document.getElementById('binFill'),binText=document.getElementById('binText'),modeText=document.getElementById('modeText'),timerText=document.getElementById('timer'),statusMessage=document.getElementById('statusMessage'),startScreen=document.getElementById('startScreen'),startBest=document.getElementById('startBest'),startButton=document.getElementById('startButton'),endScreen=document.getElementById('endScreen'),finalScore=document.getElementById('finalScore'),bestScoreEl=document.getElementById('bestScore'),statsLine=document.getElementById('statsLine'),retryButton=document.getElementById('retryButton'),batteryTable=document.getElementById('batteryTable'),binStation=document.getElementById('binStation'),hud=document.getElementById('hud');
+const dirtTypes=[{className:'crumb',points:1,binAmount:2.7},{className:'cereal',points:3,binAmount:5.5},{className:'petHair',points:5,binAmount:8.0}];
+const bonusType={className:'bonus',points:10,binAmount:6.0};
+
+let audioCtx=null,osc1=null,osc2=null,noiseSource=null,noiseGain=null,mainGain=null,filter=null;
+function initAudio(){if(audioCtx)return;audioCtx=new(window.AudioContext||window.webkitAudioContext)();mainGain=audioCtx.createGain();mainGain.gain.value=0;mainGain.connect(audioCtx.destination);filter=audioCtx.createBiquadFilter();filter.type='lowpass';filter.frequency.value=900;filter.Q.value=.8;filter.connect(mainGain);osc1=audioCtx.createOscillator();osc1.type='sawtooth';osc1.frequency.value=82;osc1.connect(filter);osc1.start();osc2=audioCtx.createOscillator();osc2.type='square';osc2.frequency.value=123;osc2.connect(filter);osc2.start();const bufferSize=audioCtx.sampleRate,noiseBuffer=audioCtx.createBuffer(1,bufferSize,audioCtx.sampleRate),data=noiseBuffer.getChannelData(0);for(let i=0;i<bufferSize;i++)data[i]=Math.random()*2-1;noiseSource=audioCtx.createBufferSource();noiseSource.buffer=noiseBuffer;noiseSource.loop=true;noiseGain=audioCtx.createGain();noiseGain.gain.value=.045;noiseSource.connect(noiseGain);noiseGain.connect(filter);noiseSource.start()}
+function setVacuumSound(on){if(!audioCtx||!mainGain)return;if(on){const p=binFill>=90?1.7:1.0;osc1.frequency.setTargetAtTime(82*p,audioCtx.currentTime,.04);osc2.frequency.setTargetAtTime(123*p,audioCtx.currentTime,.04);filter.frequency.setTargetAtTime(binFill>=90?1500:900,audioCtx.currentTime,.04);mainGain.gain.setTargetAtTime(.09,audioCtx.currentTime,.025)}else mainGain.gain.setTargetAtTime(0,audioCtx.currentTime,.025)}
+function playPickupBlip(){if(!audioCtx)return;const t=audioCtx.currentTime,osc=audioCtx.createOscillator(),g=audioCtx.createGain();osc.type='triangle';osc.frequency.value=520+Math.min(combo,12)*45;g.gain.setValueAtTime(.06,t);g.gain.exponentialRampToValueAtTime(.001,t+.09);osc.connect(g);g.connect(audioCtx.destination);osc.start(t);osc.stop(t+.1)}
+
+function canVacuum(){return gameRunning&&!paused&&pointerDown&&battery>0&&binFill<100}
+function comboMultiplier(){return combo>=10?3:combo>=5?2:1}
+function updateComboHud(){const m=comboMultiplier();comboText.textContent=combo>=2?'Combo x'+combo+(m>1?' ('+m+'x points!)':''):''}
+function updateVacuumState(){const active=canVacuum();vacuum.classList.toggle('vacuuming',active);if(!gameRunning)modeText.textContent=startScreen.style.display!=='none'?'Press Start':'Game over';else if(paused)modeText.textContent='Paused';else if(battery<=0)modeText.textContent='Battery empty - swap battery';else if(binFill>=100)modeText.textContent='Bin full - empty it';else if(pointerDown)modeText.textContent='Vacuuming';else modeText.textContent='Hold to vacuum';setVacuumSound(active)}
+
+function movePointer(x,y){pointerX=x;pointerY=y;vacuum.style.left=(x-38)+'px';vacuum.style.top=(y-62)+'px';if(gameRunning&&!paused)checkStations()}
+document.addEventListener('pointermove',e=>{movePointer(e.clientX,e.clientY)});
+document.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'&&e.button!==0)return;movePointer(e.clientX,e.clientY);pointerDown=true;initAudio();if(audioCtx.state==='suspended')audioCtx.resume();updateVacuumState()});
+document.addEventListener('pointerup',e=>{if(e.pointerType==='mouse'&&e.button!==0)return;pointerDown=false;updateVacuumState()});
+document.addEventListener('pointercancel',()=>{pointerDown=false;updateVacuumState()});
+window.addEventListener('blur',()=>{pointerDown=false;updateVacuumState()});
+document.addEventListener('contextmenu',e=>e.preventDefault());
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&gameRunning){paused=true;pointerDown=false;updateVacuumState()}else if(!document.hidden&&paused){paused=false;lastFrame=performance.now();showStatus('Resumed');updateVacuumState()}});
+
+function checkStations(){if(isInside(pointerX,pointerY,batteryTable)&&battery<100){battery=100;showStatus('Battery swapped');updateHud()}if(isInside(pointerX,pointerY,binStation)&&binFill>0){binFill=0;showStatus('Dust bin emptied');updateHud();updateVacuumState()}}
+
+function collectDirt(dirt){const now=performance.now();combo=now<=comboExpires?combo+1:1;comboExpires=now+COMBO_WINDOW_MS;const earned=dirt.points*comboMultiplier();score+=earned;binFill=Math.min(100,binFill+dirt.binAmount);collectedCounts[dirt.type]++;showFloatText('+'+earned,dirt.x,dirt.y,comboMultiplier()>1);playPickupBlip();removeDirt(dirt);updateComboHud();updateHud();updateVacuumState();ensureMinimumDirt()}
+function removeDirt(dirt){dirt.el.remove();const i=dirts.indexOf(dirt);if(i>=0)dirts.splice(i,1)}
+
+function overlapsUi(x,y){return[hud,batteryTable,binStation].some(el=>{const r=el.getBoundingClientRect();return x>r.left-30&&x<r.right+30&&y>r.top-30&&y<r.bottom+30})}
+function spawnDirt(){if(!gameRunning||paused)return;const isBonus=Math.random()<BONUS_CHANCE,type=isBonus?bonusType:dirtTypes[Math.floor(Math.random()*dirtTypes.length)];let x,y;for(let tries=0;tries<12;tries++){x=60+Math.random()*Math.max(100,innerWidth-120);y=60+Math.random()*Math.max(100,innerHeight-120);if(!overlapsUi(x,y))break}
+const el=document.createElement('div');el.className='dirt '+type.className;el.style.left=x+'px';el.style.top=y+'px';document.body.appendChild(el);dirts.push({el,x,y,type:type.className,points:type.points,binAmount:type.binAmount,expires:isBonus?performance.now()+BONUS_LIFETIME_MS:Infinity})}
+function ensureMinimumDirt(){if(!gameRunning)return;for(let i=dirts.length;i<MIN_DIRT_ON_SCREEN;i++)spawnDirt()}
+function spawnMessWave(count){for(let i=0;i<count;i++)setTimeout(spawnDirt,i*35);showStatus('More mess incoming')}
+
+let lastFrame=performance.now();
+function frame(now){const dt=Math.min(.05,(now-lastFrame)/1000);lastFrame=now;if(gameRunning&&!paused){if(combo>0&&now>comboExpires){combo=0;updateComboHud()}
+const sucking=canVacuum();for(let i=dirts.length-1;i>=0;i--){const d=dirts[i];if(now>d.expires){removeDirt(d);ensureMinimumDirt();continue}
+if(d.expires-now<1200)d.el.classList.add('fading');
+if(!sucking)continue;const dx=pointerX-d.x,dy=pointerY-d.y,dist=Math.hypot(dx,dy);if(dist<COLLECT_RADIUS)collectDirt(d);else if(dist<ATTRACT_RADIUS){const speed=90+300*(1-dist/ATTRACT_RADIUS);d.x+=dx/dist*speed*dt;d.y+=dy/dist*speed*dt;d.el.style.left=d.x+'px';d.el.style.top=d.y+'px'}}}
+requestAnimationFrame(frame)}
+requestAnimationFrame(frame);
+
+function updateHud(){scoreText.textContent='Score: '+score;batteryText.textContent=Math.round(battery)+'%';batteryFillEl.style.width=battery+'%';binText.textContent=Math.round(binFill)+'%';binFillEl.style.width=binFill+'%';batteryFillEl.style.background=battery>45?'#00c853':battery>20?'#ffb300':'#e53935';binFillEl.style.background=binFill>=90?'#d32f2f':'#8b5a2b'}
+function showFloatText(text,x,y,big){const el=document.createElement('div');el.className='floatText'+(big?' big':'');el.textContent=text;el.style.left=x+'px';el.style.top=y+'px';document.body.appendChild(el);setTimeout(()=>el.remove(),750)}
+let statusTimeout;function showStatus(text){statusMessage.textContent=text;statusMessage.style.display='block';clearTimeout(statusTimeout);statusTimeout=setTimeout(()=>statusMessage.style.display='none',900)}
+function isInside(x,y,el){const r=el.getBoundingClientRect();return x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom}
+function getBestScore(){try{return Number(localStorage.getItem(BEST_SCORE_KEY))||0}catch(e){return 0}}
+function saveBestScore(v){try{localStorage.setItem(BEST_SCORE_KEY,v)}catch(e){}}
+
+function startTimers(){clearInterval(spawnTimer);clearInterval(secondTimer);clearInterval(drainTimer);clearInterval(minimumDirtTimer);spawnTimer=setInterval(spawnDirt,spawnRate);minimumDirtTimer=setInterval(ensureMinimumDirt,500);drainTimer=setInterval(()=>{if(!gameRunning||paused)return;if(canVacuum()){battery=Math.max(0,battery-BATTERY_DRAIN_PER_TICK);if(battery<=0)showStatus('Battery empty - go to the battery table');updateHud();updateVacuumState()}},DRAIN_TICK_MS);secondTimer=setInterval(()=>{if(!gameRunning||paused)return;timeLeft--;timerText.textContent=timeLeft;timerText.classList.toggle('low',timeLeft<=10);ensureMinimumDirt();if(timeLeft===40)spawnMessWave(20);if(timeLeft===30)spawnMessWave(28);if(timeLeft===20)spawnMessWave(36);if(timeLeft%10===0&&timeLeft>0)increaseDifficulty();if(timeLeft<=0)endGame()},1000)}
+function increaseDifficulty(){spawnRate=Math.max(220,spawnRate-140);clearInterval(spawnTimer);spawnTimer=setInterval(spawnDirt,spawnRate);showStatus('Dirt appearing faster')}
+
+function endGame(){gameRunning=false;paused=false;pointerDown=false;clearInterval(spawnTimer);clearInterval(secondTimer);clearInterval(drainTimer);clearInterval(minimumDirtTimer);updateVacuumState();finalScore.textContent=score;const best=getBestScore();if(score>best){saveBestScore(score);bestScoreEl.textContent='New best score!';bestScoreEl.classList.add('newBest')}else{bestScoreEl.textContent='Best: '+best;bestScoreEl.classList.remove('newBest')}
+statsLine.textContent='Crumbs: '+collectedCounts.crumb+' · Cereal: '+collectedCounts.cereal+' · Pet hair: '+collectedCounts.petHair+' · Dust bunnies: '+collectedCounts.bonus;startScreen.style.display='none';endScreen.style.display='flex';document.body.style.cursor='default'}
+function resetGame(){dirts.splice(0).forEach(d=>d.el.remove());document.querySelectorAll('.dirt,.floatText').forEach(el=>el.remove());score=0;battery=100;binFill=0;timeLeft=60;spawnRate=900;combo=0;comboExpires=0;collectedCounts={crumb:0,cereal:0,petHair:0,bonus:0};gameRunning=true;paused=false;pointerDown=false;lastFrame=performance.now();timerText.textContent=timeLeft;timerText.classList.remove('low');startScreen.style.display='none';endScreen.style.display='none';document.body.style.cursor='none';updateComboHud();updateHud();updateVacuumState();for(let i=0;i<18;i++)spawnDirt();ensureMinimumDirt();startTimers()}
+
+retryButton.addEventListener('click',resetGame);startButton.addEventListener('click',resetGame);
+const initialBest=getBestScore();startBest.textContent=initialBest>0?'Best score: '+initialBest:'';
+updateHud();updateVacuumState();
+</script>
+</body>
+</html>
