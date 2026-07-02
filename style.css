@@ -170,6 +170,134 @@ body {
   100% { opacity: 0; }
 }
 
+/* ----------------------------------------------------------- touch UI */
+
+#touch-ui {
+  display: none;
+}
+body.touch #touch-ui {
+  display: block;
+}
+body.touch #hint {
+  display: none;
+}
+body.touch #crosshair {
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+}
+body.touch #score {
+  right: auto;
+  left: max(16px, env(safe-area-inset-left));
+  top: max(12px, env(safe-area-inset-top));
+  font-size: 13px;
+}
+body.touch #develop {
+  right: max(24px, env(safe-area-inset-right));
+  bottom: 150px;
+  width: 124px;
+}
+body.touch #develop img {
+  width: 124px;
+}
+
+.touch-btn {
+  position: absolute;
+  pointer-events: auto;
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  background: rgba(20, 26, 22, 0.45);
+  color: rgba(255, 255, 255, 0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  padding: 0;
+}
+.touch-btn:active {
+  background: rgba(60, 80, 66, 0.65);
+}
+.touch-btn.small {
+  width: 56px;
+  height: 56px;
+}
+
+#t-walk {
+  left: max(22px, env(safe-area-inset-left));
+  bottom: max(24px, env(safe-area-inset-bottom));
+}
+#t-snap {
+  right: max(22px, env(safe-area-inset-right));
+  bottom: max(24px, env(safe-area-inset-bottom));
+  border-color: rgba(255, 255, 255, 0.75);
+}
+.shutter-ring {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.shutter-core {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: #e8e2d4;
+}
+#t-snap:active .shutter-core {
+  background: #c96a2e;
+}
+#t-book {
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: max(24px, env(safe-area-inset-bottom));
+}
+#t-cog {
+  right: max(16px, env(safe-area-inset-right));
+  top: max(14px, env(safe-area-inset-top));
+}
+
+#zoom-wrap {
+  position: absolute;
+  pointer-events: auto;
+  right: max(14px, env(safe-area-inset-right));
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  background: rgba(20, 26, 22, 0.4);
+  border-radius: 20px;
+  padding: 10px 6px;
+}
+.zoom-label {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 18px;
+  line-height: 1;
+}
+#zoom-slider {
+  /* vertical, min (30 = zoomed in) at the top next to the "+" label */
+  writing-mode: vertical-lr;
+  width: 28px;
+  height: 150px;
+  touch-action: none;
+  accent-color: #c96a2e;
+}
+body.touch #viewfinder {
+  inset: 13% 12%;
+}
+body.touch .vf-label {
+  display: none;
+}
+
 /* ------------------------------------------------------------- overlays */
 
 #title,
@@ -386,4 +514,44 @@ button.primary:hover {
   color: #9a8a6e;
   font-size: 12px;
   margin-top: 10px;
+}
+body.touch .book-hint {
+  display: none;
+}
+
+/* ------------------------------------------------------- small screens */
+
+@media (max-width: 720px), (max-height: 520px) {
+  .panel {
+    padding: 24px 26px;
+    max-width: 92vw;
+  }
+  .panel h1 {
+    font-size: 30px;
+  }
+  .book-inner {
+    padding: 14px 14px;
+    width: 96vw;
+  }
+  #book-pages {
+    min-height: 0;
+    max-height: 58vh;
+    overflow-y: auto;
+    padding: 14px;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 12px;
+  }
+  .checklist {
+    grid-template-columns: 1fr;
+    font-size: 14px;
+  }
+  .book-title {
+    font-size: 17px;
+  }
+  #toast {
+    font-size: 14px;
+    max-width: 86vw;
+    white-space: normal;
+    text-align: center;
+  }
 }

@@ -8,10 +8,17 @@ import { UI } from './ui';
 
 type GameState = 'title' | 'playing' | 'book' | 'paused';
 
+/** Touch devices get on-screen controls instead of pointer lock + keyboard. */
+const IS_TOUCH =
+  new URLSearchParams(location.search).has('touch') ||
+  window.matchMedia('(pointer: coarse)').matches ||
+  'ontouchstart' in window;
+if (IS_TOUCH) document.body.classList.add('touch');
+
 const app = document.getElementById('app')!;
 const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, IS_TOUCH ? 1.5 : 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 app.appendChild(renderer.domElement);
@@ -27,7 +34,7 @@ const hemi = new THREE.HemisphereLight('#d8ecf7', '#5f6f4c', 0.95);
 scene.add(hemi);
 const sun = new THREE.DirectionalLight('#fff0d8', 1.9);
 sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.mapSize.set(IS_TOUCH ? 1024 : 2048, IS_TOUCH ? 1024 : 2048);
 sun.shadow.camera.left = -75;
 sun.shadow.camera.right = 75;
 sun.shadow.camera.top = 75;
@@ -108,8 +115,7 @@ const ui = new UI({
     }
   },
   onResume: () => {
-    renderer.domElement.requestPointerLock();
-    // pointerlockchange handler completes the transition
+    if (!IS_TOUCH) renderer.domElement.requestPointerLock();
     state = 'playing';
     ui.hidePause();
   },
@@ -124,6 +130,12 @@ const ui = new UI({
     state = 'title';
     document.exitPointerLock();
     ui.showTitle(loadAutosave() !== null);
+  },
+  onCloseBook: () => {
+    if (state === 'book') {
+      state = 'playing';
+      ui.closeBook();
+    }
   },
 });
 
@@ -164,7 +176,8 @@ function beginTrip(data: SaveData, isNew: boolean) {
     state = 'playing';
     ui.showPlaying();
     updateScore();
-    ui.toast(isNew ? `Welcome to world ${data.seed >>> 0} — click to look around` : 'Trip restored — click to look around');
+    const look = IS_TOUCH ? 'drag to look around' : 'click to look around';
+    ui.toast(isNew ? `Welcome to world ${data.seed >>> 0} — ${look}` : `Trip restored — ${look}`);
   }, 40);
 }
 
@@ -234,24 +247,119 @@ function takePhoto() {
 const canvas = renderer.domElement;
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
-canvas.addEventListener('mousedown', (e) => {
-  if (state !== 'playing' || !session) return;
-  if (document.pointerLockElement !== canvas) {
-    canvas.requestPointerLock();
-    return;
-  }
-  if (e.button === 0) takePhoto();
-  if (e.button === 2) aiming = true;
-});
-window.addEventListener('mouseup', (e) => {
-  if (e.button === 2) aiming = false;
-});
+if (!IS_TOUCH) {
+  canvas.addEventListener('mousedown', (e) => {
+    if (state !== 'playing' || !session) return;
+    if (document.pointerLockElement !== canvas) {
+      canvas.requestPointerLock();
+      return;
+    }
+    if (e.button === 0) takePhoto();
+    if (e.button === 2) aiming = true;
+  });
+  window.addEventListener('mouseup', (e) => {
+    if (e.button === 2) aiming = false;
+  });
+  document.addEventListener('mousemove', (e) => {
+    if (state === 'playing' && session && document.pointerLockElement === canvas) {
+      session.player.onMouse(e.movementX, e.movementY);
+    }
+  });
+}
 
-document.addEventListener('mousemove', (e) => {
-  if (state === 'playing' && session && document.pointerLockElement === canvas) {
-    session.player.onMouse(e.movementX, e.movementY);
+// -------------------------------------------------------- touch controls
+
+let touchZoomFov = 70; // driven by the side slider
+let walkHeld = false;
+
+if (IS_TOUCH) {
+  canvas.style.touchAction = 'none';
+
+  // drag anywhere on the view to look around
+  let lookId: number | null = null;
+  let lookX = 0;
+  let lookY = 0;
+  canvas.addEventListener('pointerdown', (e) => {
+    if (e.pointerType !== 'touch' && !e.isPrimary) return;
+    if (state !== 'playing' || lookId !== null) return;
+    lookId = e.pointerId;
+    lookX = e.clientX;
+    lookY = e.clientY;
+  });
+  canvas.addEventListener('pointermove', (e) => {
+    if (e.pointerId !== lookId || state !== 'playing' || !session) return;
+    // zoomed in = finer look control, like a real camera
+    const sens = 2.6 * (camera.fov / 70);
+    session.player.onMouse((e.clientX - lookX) * sens, (e.clientY - lookY) * sens);
+    lookX = e.clientX;
+    lookY = e.clientY;
+  });
+  const endLook = (e: PointerEvent) => {
+    if (e.pointerId === lookId) lookId = null;
+  };
+  canvas.addEventListener('pointerup', endLook);
+  canvas.addEventListener('pointercancel', endLook);
+
+  // walk button: hold to move in the direction you're facing
+  const walkBtn = document.getElementById('t-walk')!;
+  const setWalk = (on: boolean) => {
+    walkHeld = on;
+    session?.player.onKey('KeyW', on);
+  };
+  walkBtn.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    try {
+      walkBtn.setPointerCapture(e.pointerId); // keep getting events if the finger slides off
+    } catch {
+      /* synthetic events have no active pointer */
+    }
+    if (state === 'playing') setWalk(true);
+  });
+  const walkOff = () => setWalk(false);
+  walkBtn.addEventListener('pointerup', walkOff);
+  walkBtn.addEventListener('pointercancel', walkOff);
+
+  document.getElementById('t-snap')!.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    if (state === 'playing') takePhoto();
+  });
+
+  document.getElementById('t-book')!.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    toggleBook();
+  });
+
+  document.getElementById('t-cog')!.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    if (state !== 'playing' || !session) return;
+    state = 'paused';
+    setWalk(false);
+    session.player.clearKeys();
+    const pts = session.photos.reduce((a, r) => a + r.points, 0);
+    autosave(snapshot(session));
+    ui.showPause(`World ${session.seed >>> 0} · Day ${dayOf(session.elapsed)} · ${session.photos.length} species · ${pts} pts`);
+  });
+
+  const slider = document.getElementById('zoom-slider') as HTMLInputElement;
+  slider.addEventListener('input', () => {
+    touchZoomFov = Number(slider.value);
+  });
+}
+
+function toggleBook() {
+  if (state === 'playing' && session) {
+    state = 'book';
+    session.player.clearKeys();
+    walkHeld = false;
+    aiming = false;
+    ui.openBook(session.photos);
+    if (!IS_TOUCH) document.exitPointerLock();
+  } else if (state === 'book') {
+    state = 'playing';
+    ui.closeBook();
+    if (!IS_TOUCH) canvas.requestPointerLock();
   }
-});
+}
 
 document.addEventListener('pointerlockchange', () => {
   const locked = document.pointerLockElement === canvas;
@@ -272,17 +380,7 @@ document.addEventListener('pointerlockchange', () => {
 window.addEventListener('keydown', (e) => {
   if (e.code === 'Space') {
     e.preventDefault();
-    if (state === 'playing' && session) {
-      state = 'book';
-      session.player.clearKeys();
-      aiming = false;
-      ui.openBook(session.photos);
-      document.exitPointerLock();
-    } else if (state === 'book') {
-      state = 'playing';
-      ui.closeBook();
-      canvas.requestPointerLock();
-    }
+    toggleBook();
     return;
   }
   if (state === 'book') {
@@ -324,13 +422,13 @@ function tick() {
     session.player.update(dt);
     session.spawner.update(dt, session.player.position, session.player.noiseFactor);
 
-    // camera zoom while aiming
-    const targetFov = aiming ? 40 : 70;
+    // camera zoom: slider on touch, right-click on desktop
+    const targetFov = IS_TOUCH ? touchZoomFov : aiming ? 40 : 70;
     if (Math.abs(camera.fov - targetFov) > 0.1) {
       camera.fov = THREE.MathUtils.lerp(camera.fov, targetFov, Math.min(1, dt * 10));
       camera.updateProjectionMatrix();
     }
-    ui.setViewfinder(aiming);
+    ui.setViewfinder(camera.fov < 58);
 
     // golden-hour sun follows the player so shadows stay crisp
     sun.position.set(session.player.position.x + 70, 95, session.player.position.z + 45);
@@ -353,6 +451,9 @@ ui.showTitle(loadAutosave() !== null);
   },
   get session() {
     return session;
+  },
+  get fov() {
+    return camera.fov;
   },
   takePhoto,
   snapshot: () => (session ? snapshot(session) : null),

@@ -12,6 +12,7 @@ export interface UICallbacks {
   onResume: () => void;
   onSave: () => void;
   onQuit: () => void;
+  onCloseBook: () => void;
 }
 
 export class UI {
@@ -50,6 +51,7 @@ export class UI {
     $('btn-quit').addEventListener('click', () => cb.onQuit());
     $('book-prev').addEventListener('click', () => this.flipBook(-1));
     $('book-next').addEventListener('click', () => this.flipBook(1));
+    $('book-close').addEventListener('click', () => cb.onCloseBook());
   }
 
   // ------------------------------------------------------------- screens

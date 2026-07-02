@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Wildlife Polaroid</title>
     <link
       rel="icon"
@@ -28,6 +28,25 @@
       <div id="toast" class="hidden"></div>
       <div id="develop"></div>
       <div id="flash"></div>
+      <div id="touch-ui">
+        <button id="t-walk" class="touch-btn" aria-label="Walk">
+          <svg viewBox="0 0 24 24" width="34" height="34" fill="currentColor"><path d="M13.5 5.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM9.8 8.9 7 23h2.1l1.8-8 2.1 2v6h2v-7.5l-2.1-2 .6-3A7.3 7.3 0 0 0 19 13v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.56-.89-1.68-1.25-2.65-.84L6 8.3V13h2V9.6l1.8-.7z"/></svg>
+        </button>
+        <button id="t-snap" class="touch-btn snap" aria-label="Take photo">
+          <span class="shutter-ring"><span class="shutter-core"></span></span>
+        </button>
+        <button id="t-book" class="touch-btn small" aria-label="Photo book">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor"><path d="M21 4H7a2 2 0 0 0-2 2v13a3 3 0 0 0 3 3h13v-2H8a1 1 0 0 1 0-2h13V5a1 1 0 0 0-1-1h.1zM7 6h12v10H7V6zm2 2v6l4-3-4-3z"/></svg>
+        </button>
+        <button id="t-cog" class="touch-btn small" aria-label="Settings">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor"><path d="M19.4 13a7.6 7.6 0 0 0 .1-1 7.6 7.6 0 0 0-.1-1l2.1-1.7c.2-.1.2-.4.1-.6l-2-3.5c-.1-.2-.4-.3-.6-.2l-2.5 1a7.3 7.3 0 0 0-1.7-1l-.4-2.6a.5.5 0 0 0-.5-.4h-4a.5.5 0 0 0-.5.4l-.4 2.6a7.3 7.3 0 0 0-1.7 1l-2.5-1a.5.5 0 0 0-.6.2l-2 3.5c-.1.2-.1.5.1.6L4.5 11a7.6 7.6 0 0 0 0 2l-2.1 1.7a.5.5 0 0 0-.1.6l2 3.5c.1.2.4.3.6.2l2.5-1c.5.4 1.1.7 1.7 1l.4 2.6c0 .2.2.4.5.4h4c.2 0 .5-.2.5-.4l.4-2.6a7.3 7.3 0 0 0 1.7-1l2.5 1c.2.1.5 0 .6-.2l2-3.5a.5.5 0 0 0-.1-.6L19.4 13zM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z"/></svg>
+        </button>
+        <div id="zoom-wrap">
+          <span class="zoom-label">+</span>
+          <input id="zoom-slider" type="range" min="30" max="70" step="1" value="70" aria-label="Zoom" />
+          <span class="zoom-label">−</span>
+        </div>
+      </div>
     </div>
 
     <!-- Photo book -->
@@ -39,6 +58,7 @@
           <button id="book-prev">‹ prev</button>
           <span id="book-pageno"></span>
           <button id="book-next">next ›</button>
+          <button id="book-close">✕ close</button>
         </div>
         <div class="book-hint">Space / Esc — close · ← → — flip pages</div>
       </div>
