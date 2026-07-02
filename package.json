@@ -1,0 +1,26 @@
+{
+  "name": "wildlife-polaroid",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "A 3D open-world browser game: explore, stalk and photograph real animals with a polaroid camera.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview"
+  },
+  "repository": {
+    "type": "git",
+    "url": "http://local_proxy@127.0.0.1:41729/git/ericterzo/git-config"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "fflate": "^0.8.3",
+    "three": "^0.185.1"
+  },
+  "devDependencies": {
+    "@types/three": "^0.185.0",
+    "typescript": "^6.0.3",
+    "vite": "^8.1.3"
+  }
+}

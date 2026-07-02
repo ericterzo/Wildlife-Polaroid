@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Wildlife Polaroid</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%B7%3C/text%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div id="app"></div>
+
+    <!-- HUD -->
+    <div id="hud" class="hidden">
+      <div id="crosshair"></div>
+      <div id="viewfinder" class="hidden">
+        <div class="vf-corner tl"></div>
+        <div class="vf-corner tr"></div>
+        <div class="vf-corner bl"></div>
+        <div class="vf-corner br"></div>
+        <div class="vf-label">◉ REC-LIGHT OFF · POLAROID 600</div>
+      </div>
+      <div id="score"></div>
+      <div id="hint">Click — photo &nbsp;·&nbsp; Right-click — zoom &nbsp;·&nbsp; Space — photo book &nbsp;·&nbsp; Shift — run &nbsp;·&nbsp; C — sneak</div>
+      <div id="toast" class="hidden"></div>
+      <div id="develop"></div>
+      <div id="flash"></div>
+    </div>
+
+    <!-- Photo book -->
+    <div id="book" class="hidden">
+      <div class="book-inner">
+        <div class="book-title">Field Photo Book <span id="book-progress"></span></div>
+        <div id="book-pages"></div>
+        <div class="book-nav">
+          <button id="book-prev">‹ prev</button>
+          <span id="book-pageno"></span>
+          <button id="book-next">next ›</button>
+        </div>
+        <div class="book-hint">Space / Esc — close · ← → — flip pages</div>
+      </div>
+    </div>
+
+    <!-- Title screen -->
+    <div id="title">
+      <div class="panel">
+        <h1>Wildlife Polaroid</h1>
+        <p class="tagline">A quiet open world. A camera. Every animal you can find.</p>
+        <div class="menu-buttons">
+          <button id="btn-new" class="primary">New trip</button>
+          <button id="btn-continue" class="hidden">Continue last trip</button>
+          <button id="btn-load">Load save file (.zip)</button>
+        </div>
+        <div class="seed-row">
+          <label for="seed-input">World seed</label>
+          <input id="seed-input" type="text" placeholder="random" maxlength="10" />
+        </div>
+        <p id="title-status" class="status"></p>
+        <p class="credits">WASD to walk · your save is a zip file with all your photos inside</p>
+      </div>
+    </div>
+
+    <!-- Pause menu -->
+    <div id="pause" class="hidden">
+      <div class="panel">
+        <h2>Paused</h2>
+        <p id="pause-stats"></p>
+        <div class="menu-buttons">
+          <button id="btn-resume" class="primary">Resume</button>
+          <button id="btn-save">Save trip — download .zip</button>
+          <button id="btn-load2">Load save file (.zip)</button>
+          <button id="btn-quit">Quit to title</button>
+        </div>
+      </div>
+    </div>
+
+    <input type="file" id="loadfile" accept=".zip,application/zip" hidden />
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>

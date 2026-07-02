@@ -121,6 +121,11 @@ Suggested roster by habitat — all real animals:
 
 Rarity tiers (common → rare) give the photobook its collection curve; the rarest 3–4 species (e.g. badger, owl, boar) only appear in specific biomes/conditions.
 
+**Size rolls:** every spawned animal rolls a size on a bell curve, from *teeny-tiny*
+(~0.35×) to *MASSIVE* (~2.7×), with the extremes rare. Size feeds the photo score —
+the further from normal, the bigger the point multiplier (up to ~3.3×) — so a massive
+rabbit or a tiny cow is a genuine event worth chasing.
+
 ### AI: a small state machine is enough
 
 `idle → graze/peck → wander → alert → flee`
@@ -158,36 +163,31 @@ Rarity tiers (common → rare) give the photobook its collection curve; the rare
 
 ---
 
-## 7. Save system: the code
+## 7. Save system: the zip file
 
-### What must survive in the code itself (works on any device)
-
-| Field | Size |
-|---|---|
-| Version | 1 byte |
-| World seed | 4 bytes |
-| Player position (x, z quantized to 1 m; y derived from terrain) | 4 bytes |
-| Player heading | 1 byte |
-| In-game day/time | 2 bytes |
-| Photographed-species bitmask (order taken not preserved here — see below) | 4–8 bytes (32–64 species) |
-| Capture-order + star rating per species (6 bits each × 20) | ~15 bytes |
-| Checksum (CRC-8) | 1 byte |
-
-Total ≈ 32–35 bytes → **base32 (Crockford) ≈ a 52–56 character code**, chunked for readability:
+The save is a **downloadable zip file** — fully self-contained, works on any device,
+and doubles as a keepsake (the photos inside are real JPEGs you can open anywhere):
 
 ```
-WPX1-9K3F-A7Q2-MMZ8-4T6B-JH0C-XR5N-P2VD-K8LW-3FQY-7ZT4
+wildlife-polaroid-world12345-day3.zip
+├── manifest.json          # seed, elapsed time, player position/heading,
+│                          # photo metadata (species, order, stars, size, points, day)
+├── README.txt             # what this file is and how to load it
+└── photos/
+    ├── 001_red_fox.jpg    # the actual polaroids, numbered in capture order
+    ├── 002_roe_deer.jpg
+    └── ...
 ```
 
-Long-ish, but copy-pasteable, has a checksum so typos are caught, and is fully self-contained — no server, works across devices.
-
-### What lives in IndexedDB (same device only)
-
-The actual polaroid JPEGs (30–60 KB each — far too big for a code). Keyed by `seed + speciesId`.
-
-**Cross-device rule:** entering a code on a new device restores the world, position, and the photobook's *pages* (species, order, stars, day taken) — but the photo slots show a stylized "faded polaroid" placeholder with the species illustration until re-photographed. On the original device, the real photos are still there. This is an honest, robust compromise; document it in the UI ("Your book traveled, but the photos stayed home — reshoot them!").
-
-Also: autosave the code to `localStorage` continuously and show the current code in the pause menu with a copy button, so "give me a code" is always one click.
+- **Save:** pause menu → "Save trip" downloads the zip.
+- **Load:** title screen or pause menu → pick the zip; the seed rebuilds the identical
+  world, the player restores to the same spot and heading, and the photobook comes back
+  with every polaroid intact — full cross-device portability, no server, no accounts.
+- Photos are stored uncompressed in the zip (they're already JPEGs); `manifest.json`
+  is the source of truth for order and scoring so renamed photos can't corrupt a save.
+- A `localStorage` **autosave** (every 10 s, on every photo, and on quit) backs the
+  "Continue last trip" button so a refresh never loses progress; the zip remains the
+  durable, portable save.
 
 ---
 
