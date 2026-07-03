@@ -565,7 +565,7 @@ export function describeSize(factor: number): SizeRoll {
 
 // ---------------------------------------------------------------- animals
 
-type AIState = 'idle' | 'graze' | 'wander' | 'alert' | 'flee' | 'flyaway' | 'approach';
+type AIState = 'idle' | 'graze' | 'wander' | 'alert' | 'flee' | 'flyaway' | 'approach' | 'flyover';
 
 export class Animal {
   readonly def: SpeciesDef;
@@ -579,6 +579,9 @@ export class Animal {
   private animT = 0;
   private moving = false;
   alive = true;
+  /** Set when the bird is sitting in a tree; cleared when it takes off. */
+  perchY: number | null = null;
+  private flyoverY = 0;
 
   constructor(def: SpeciesDef, x: number, z: number, size: SizeRoll, private world: World) {
     this.def = def;
@@ -607,10 +610,28 @@ export class Animal {
 
   /** In the air right now? (bonus points for birds photographed in flight) */
   get flying(): boolean {
-    return this.state === 'flyaway';
+    return this.state === 'flyaway' || this.state === 'flyover';
+  }
+
+  /** Put this bird on a tree: it sits there until spooked. */
+  perchAt(y: number) {
+    this.perchY = y;
+    this.state = 'idle';
+    this.position.y = y;
+  }
+
+  /** Send this bird on a straight pass through the sky above the player. */
+  startFlyover(heading: number, altitude: number) {
+    this.state = 'flyover';
+    this.stateT = 0;
+    this.heading = heading;
+    this.flyoverY = altitude;
+    this.position.y = altitude;
+    this.rig.group.rotation.y = heading;
   }
 
   private groundY(x: number, z: number): number {
+    if (this.perchY !== null) return this.perchY;
     if (this.def.aquatic) return WATER_Y - 0.4;
     if (this.def.swims) return Math.max(this.world.heightAt(x, z), WATER_Y - 0.08);
     return this.world.heightAt(x, z);
@@ -628,6 +649,10 @@ export class Animal {
     this.state = s;
     this.stateT = 0;
     if (s === 'wander') {
+      if (this.perchY !== null) {
+        this.state = 'idle'; // perched birds sit still until something happens
+        return;
+      }
       for (let i = 0; i < 8; i++) {
         const a = Math.random() * Math.PI * 2;
         const d = 5 + Math.random() * 18;
@@ -658,9 +683,10 @@ export class Animal {
     const distToPlayer = Math.hypot(p.x - playerPos.x, p.z - playerPos.z);
     const friendly = this.def.temperament === 'friendly';
 
-    if (!friendly && this.state !== 'flee' && this.state !== 'flyaway' && this.state !== 'alert') {
-      // shy: closer + noisier player = spook
-      if (distToPlayer < this.def.fleeDist * playerNoise) this.spook(playerPos);
+    if (!friendly && this.state !== 'flee' && this.state !== 'flyaway' && this.state !== 'alert' && this.state !== 'flyover') {
+      // shy: closer + noisier player = spook (perched birds watch from higher up)
+      const fleeAt = this.perchY !== null ? this.def.fleeDist * 0.55 : this.def.fleeDist;
+      if (distToPlayer < fleeAt * playerNoise) this.spook(playerPos);
     }
     if (friendly && (this.state === 'idle' || this.state === 'graze' || this.state === 'wander')) {
       // friendly: notice the player and come say hello
@@ -689,12 +715,25 @@ export class Animal {
         // frozen, head up, facing the player — this is the photo window
         this.rig.group.rotation.y = this.heading;
         if (this.stateT > 1.4) {
-          if (this.def.flies && !this.def.swims) this.enterState('flyaway');
-          else this.enterState('flee');
+          if (this.def.flies && !this.def.swims) {
+            this.perchY = null; // take off
+            this.enterState('flyaway');
+          } else {
+            this.enterState('flee');
+          }
           const dx = p.x - playerPos.x;
           const dz = p.z - playerPos.z;
           this.heading = Math.atan2(dx, dz);
         }
+        break;
+      }
+      case 'flyover': {
+        p.x += Math.sin(this.heading) * this.def.speed * 2.4 * dt;
+        p.z += Math.cos(this.heading) * this.def.speed * 2.4 * dt;
+        p.y = this.flyoverY + Math.sin(this.animT * 1.3) * 0.6;
+        this.rig.group.rotation.y = this.heading;
+        this.moving = true;
+        if (this.stateT > 18) this.alive = false;
         break;
       }
       case 'flee': {
@@ -792,17 +831,24 @@ const DESPAWN = 150;
 
 const LAND_SPECIES = SPECIES.filter((s) => !s.aquatic);
 const FISH_SPECIES = SPECIES.filter((s) => s.aquatic);
+const FLIER_SPECIES = SPECIES.filter((s) => s.flies);
 
 export class AnimalSpawner {
   readonly animals: Animal[] = [];
   private cooldown = 0;
   private fishCooldown = 0;
+  private flyoverTimer = 8; // first flyover comes fairly soon
 
   constructor(private world: World, private scene: THREE.Scene) {}
 
   update(dt: number, playerPos: THREE.Vector3, playerNoise: number, playerWaterDepth = 0) {
     this.cooldown -= dt;
     this.fishCooldown -= dt;
+    this.flyoverTimer -= dt;
+    if (this.flyoverTimer <= 0) {
+      this.flyoverTimer = 16 + Math.random() * 20;
+      this.spawnFlyover(playerPos);
+    }
     for (let i = this.animals.length - 1; i >= 0; i--) {
       const a = this.animals[i];
       a.update(dt, playerPos, playerNoise);
@@ -851,7 +897,29 @@ export class AnimalSpawner {
     if (this.animals.filter((a) => a.def.id === def.id).length >= 3) return;
     if (def.swims && this.world.heightAt(x, z) > WATER_Y - 0.15) return;
     if (!def.swims && this.world.heightAt(x, z) < WATER_Y + 0.15) return;
-    this.spawn(def, x, z);
+    const animal = this.spawn(def, x, z);
+    // forest birds often start out perched on a treetop
+    if (def.flies && !def.swims && habitat === 'forest' && Math.random() < 0.55) {
+      const tree = this.world.randomTreeNear(x, z, 14);
+      if (tree) {
+        animal.position.x = tree.x;
+        animal.position.z = tree.z;
+        animal.perchAt(this.world.heightAt(tree.x, tree.z) - 0.2 + 5.0 * tree.scale);
+      }
+    }
+  }
+
+  /** A bird crossing the sky above the player — photo bonus if you catch it. */
+  private spawnFlyover(playerPos: THREE.Vector3) {
+    const def = this.weightedPick(FLIER_SPECIES);
+    if (!def) return;
+    const ang = Math.random() * Math.PI * 2;
+    const x = playerPos.x + Math.cos(ang) * 55;
+    const z = playerPos.z + Math.sin(ang) * 55;
+    const animal = this.spawn(def, x, z);
+    // aim it roughly over the player's head
+    const heading = Math.atan2(playerPos.x - x, playerPos.z - z) + (Math.random() - 0.5) * 0.35;
+    animal.startFlyover(heading, playerPos.y + 9 + Math.random() * 9);
   }
 
   private trySpawnFish(playerPos: THREE.Vector3) {
@@ -866,10 +934,11 @@ export class AnimalSpawner {
     this.spawn(def, x, z);
   }
 
-  private spawn(def: SpeciesDef, x: number, z: number) {
+  private spawn(def: SpeciesDef, x: number, z: number): Animal {
     const animal = new Animal(def, x, z, rollSize(Math.random), this.world);
     this.scene.add(animal.rig.group);
     this.animals.push(animal);
+    return animal;
   }
 
   clear() {

@@ -430,6 +430,98 @@ button.primary:hover {
   color: #6a635a;
 }
 
+.slider-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+  font-size: 15px;
+}
+.slider-row label {
+  width: 62px;
+  text-align: right;
+  color: #6a635a;
+}
+.slider-row input[type='range'] {
+  flex: 1;
+  accent-color: var(--accent);
+}
+
+/* -------------------------------------------------------------- gallery */
+
+#gallery {
+  position: fixed;
+  inset: 0;
+  z-index: 32;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(14, 20, 16, 0.92);
+}
+.gallery-inner {
+  background: var(--paper);
+  border-radius: 8px;
+  width: min(980px, 95vw);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.7);
+}
+.gallery-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 20px;
+  font-size: 20px;
+  color: var(--ink);
+  border-bottom: 1px solid #d5cbb5;
+}
+#gallery-grid {
+  overflow-y: auto;
+  padding: 18px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 14px;
+}
+.gallery-card {
+  background: #fff;
+  padding: 8px 8px 10px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  text-align: center;
+  transform: rotate(-0.6deg);
+}
+.gallery-card:nth-child(even) {
+  transform: rotate(0.8deg);
+}
+.gallery-card img {
+  width: 100%;
+  display: block;
+  border: 1px solid #e0d8c4;
+}
+.gallery-card .g-name {
+  font-size: 13px;
+  margin-top: 6px;
+  color: var(--ink);
+  font-family: 'Segoe Print', 'Comic Sans MS', cursive;
+}
+.gallery-loading {
+  grid-column: 1 / -1;
+  text-align: center;
+  color: #8a8274;
+  font-style: italic;
+  padding: 40px 0;
+}
+
+#cheats {
+  position: fixed;
+  inset: 0;
+  z-index: 31;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(14, 20, 16, 0.9);
+}
+
 /* -------------------------------------------------------- instructions */
 
 #help {

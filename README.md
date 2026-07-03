@@ -53,8 +53,13 @@ Pages/Netlify/any static host).
   the water rises up the screen — and that's when the fish come out.
 - The **photo book** (`Space`) shows your polaroids and a Field Index of every
   species — the ones you haven't found yet are just `???`.
+- Birds **perch in treetops** and occasionally **fly right over your head** —
+  both are photo opportunities (flight bonus applies).
 - Chill **generative ambient music**, synthesized in-browser (royalty-free by
-  construction); toggle it in the pause menu.
+  construction), with separate music/effects volume sliders in the menu. The
+  shutter sounds like a real polaroid: click, motor whirr, print clunk.
+- A **Cheats** submenu holds a species gallery with a rendered portrait of
+  every animal, so you know what you're looking for.
 
 ### Saving
 

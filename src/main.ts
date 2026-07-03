@@ -6,6 +6,7 @@ import { PhotoRecord, scoreShot, computePoints, makePolaroid, captionFor } from 
 import { SaveData, downloadSave, parseSaveZip, buildSaveZip, autosave, loadAutosave, dayOf } from './save';
 import { UI } from './ui';
 import { AmbientMusic } from './music';
+import { generatePortraits } from './gallery';
 
 type GameState = 'title' | 'playing' | 'book' | 'paused';
 
@@ -53,26 +54,101 @@ window.addEventListener('resize', () => {
 
 // ------------------------------------------------------------------ audio
 
+const SFX_KEY = 'wildlife-polaroid-sfx-vol';
+let sfxVolume = (() => {
+  const v = Number(localStorage.getItem(SFX_KEY));
+  return Number.isFinite(v) && localStorage.getItem(SFX_KEY) !== null ? Math.min(1, Math.max(0, v)) : 0.8;
+})();
+function setSfxVolume(v: number) {
+  sfxVolume = Math.min(1, Math.max(0, v));
+  localStorage.setItem(SFX_KEY, String(sfxVolume));
+}
+
 let audioCtx: AudioContext | null = null;
-function blip(freq: number, dur: number, type: OscillatorType = 'square', gain = 0.06) {
+let noiseBuffer: AudioBuffer | null = null;
+function ensureAudio(): AudioContext | null {
   try {
     audioCtx ??= new AudioContext();
-    const o = audioCtx.createOscillator();
-    const g = audioCtx.createGain();
-    o.type = type;
-    o.frequency.value = freq;
-    g.gain.setValueAtTime(gain, audioCtx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + dur);
-    o.connect(g).connect(audioCtx.destination);
-    o.start();
-    o.stop(audioCtx.currentTime + dur);
+    if (!noiseBuffer) {
+      noiseBuffer = audioCtx.createBuffer(1, audioCtx.sampleRate, audioCtx.sampleRate);
+      const d = noiseBuffer.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    }
+    return audioCtx;
   } catch {
-    /* audio is a garnish */
+    return null;
   }
 }
+
+function blip(freq: number, dur: number, type: OscillatorType = 'square', gain = 0.06) {
+  const ctx = ensureAudio();
+  if (!ctx || sfxVolume <= 0) return;
+  const o = ctx.createOscillator();
+  const g = ctx.createGain();
+  o.type = type;
+  o.frequency.value = freq;
+  g.gain.setValueAtTime(gain * sfxVolume, ctx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + dur);
+  o.connect(g).connect(ctx.destination);
+  o.start();
+  o.stop(ctx.currentTime + dur);
+}
+
+/** Filtered noise burst — the building block of mechanical camera noises. */
+function noiseHit(ctx: AudioContext, at: number, dur: number, freq: number, q: number, gain: number) {
+  const src = ctx.createBufferSource();
+  src.buffer = noiseBuffer!;
+  src.loop = true;
+  const bp = ctx.createBiquadFilter();
+  bp.type = 'bandpass';
+  bp.frequency.value = freq;
+  bp.Q.value = q;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, at);
+  g.gain.exponentialRampToValueAtTime(gain * sfxVolume, at + 0.006);
+  g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+  src.connect(bp).connect(g).connect(ctx.destination);
+  src.start(at);
+  src.stop(at + dur + 0.05);
+}
+
+/**
+ * A polaroid taking a picture, in under a second: the sharp shutter CLICK,
+ * then the motor whirring as it ejects the print, then a soft final clunk.
+ */
 const shutterSound = () => {
-  blip(2600, 0.05, 'square', 0.05);
-  setTimeout(() => blip(1400, 0.06, 'square', 0.04), 55);
+  const ctx = ensureAudio();
+  if (!ctx || sfxVolume <= 0) return;
+  const t = ctx.currentTime;
+  // 1) shutter click
+  noiseHit(ctx, t, 0.035, 3400, 1.2, 0.5);
+  noiseHit(ctx, t + 0.012, 0.03, 1500, 1.5, 0.3);
+  // 2) eject motor whirr (~0.6s) — buzzy noise with a motor-speed flutter
+  const motor = ctx.createBufferSource();
+  motor.buffer = noiseBuffer!;
+  motor.loop = true;
+  const mb = ctx.createBiquadFilter();
+  mb.type = 'bandpass';
+  mb.frequency.setValueAtTime(950, t + 0.08);
+  mb.frequency.linearRampToValueAtTime(720, t + 0.7); // motor slows as the print emerges
+  mb.Q.value = 2.5;
+  const mg = ctx.createGain();
+  mg.gain.setValueAtTime(0.0001, t + 0.07);
+  mg.gain.exponentialRampToValueAtTime(0.11 * sfxVolume, t + 0.12);
+  mg.gain.setValueAtTime(0.11 * sfxVolume, t + 0.6);
+  mg.gain.exponentialRampToValueAtTime(0.0001, t + 0.74);
+  const flutter = ctx.createOscillator(); // gear teeth
+  flutter.frequency.value = 26;
+  const fg = ctx.createGain();
+  fg.gain.value = 0.05 * sfxVolume;
+  flutter.connect(fg).connect(mg.gain);
+  motor.connect(mb).connect(mg).connect(ctx.destination);
+  motor.start(t + 0.07);
+  motor.stop(t + 0.8);
+  flutter.start(t + 0.07);
+  flutter.stop(t + 0.8);
+  // 3) the print clunks free
+  noiseHit(ctx, t + 0.72, 0.05, 600, 1.2, 0.22);
 };
 const newSpeciesSound = () => {
   blip(660, 0.1, 'triangle', 0.07);
@@ -271,15 +347,46 @@ for (const id of ['btn-help', 'btn-help2']) {
 }
 document.getElementById('btn-help-close')!.addEventListener('click', () => helpEl.classList.add('hidden'));
 
-// music toggle (pause menu)
-const musicBtn = document.getElementById('btn-music')! as HTMLButtonElement;
-const musicLabel = () => (musicBtn.textContent = `Music: ${music.enabled ? 'on' : 'off'}`);
-musicLabel();
-musicBtn.addEventListener('click', () => {
-  music.setEnabled(!music.enabled);
+// audio sliders (pause menu)
+const musicSlider = document.getElementById('vol-music') as HTMLInputElement;
+const sfxSlider = document.getElementById('vol-sfx') as HTMLInputElement;
+musicSlider.value = String(Math.round(music.volume * 100));
+sfxSlider.value = String(Math.round(sfxVolume * 100));
+musicSlider.addEventListener('input', () => {
+  music.setVolume(Number(musicSlider.value) / 100);
   music.start();
-  musicLabel();
 });
+sfxSlider.addEventListener('input', () => setSfxVolume(Number(sfxSlider.value) / 100));
+sfxSlider.addEventListener('change', () => shutterSound()); // preview the new level
+
+// cheats submenu + species gallery
+const cheatsEl = document.getElementById('cheats')!;
+const galleryEl = document.getElementById('gallery')!;
+document.getElementById('btn-cheats')!.addEventListener('click', () => cheatsEl.classList.remove('hidden'));
+document.getElementById('btn-cheats-close')!.addEventListener('click', () => cheatsEl.classList.add('hidden'));
+document.getElementById('btn-gallery')!.addEventListener('click', () => {
+  galleryEl.classList.remove('hidden');
+  // give the overlay a frame to paint its loading note, then render portraits
+  setTimeout(() => {
+    const grid = document.getElementById('gallery-grid')!;
+    if (grid.querySelector('.gallery-card')) return; // already built
+    const portraits = generatePortraits();
+    grid.innerHTML = '';
+    for (const p of portraits) {
+      const card = document.createElement('div');
+      card.className = 'gallery-card';
+      const img = document.createElement('img');
+      img.src = p.dataUrl;
+      img.alt = p.name;
+      const name = document.createElement('div');
+      name.className = 'g-name';
+      name.textContent = p.name;
+      card.append(img, name);
+      grid.appendChild(card);
+    }
+  }, 60);
+});
+document.getElementById('btn-gallery-close')!.addEventListener('click', () => galleryEl.classList.add('hidden'));
 
 if (!IS_TOUCH) {
   canvas.addEventListener('mousedown', (e) => {

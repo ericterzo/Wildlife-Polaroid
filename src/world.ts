@@ -32,7 +32,7 @@ export class World {
   readonly occluders: THREE.Object3D[] = []; // solid meshes for photo line-of-sight
   private buildingBoxes: AABB[] = [];
   private pathGrid = new Map<string, Array<[number, number]>>();
-  private treeGrid = new Map<string, Array<[number, number]>>();
+  private treeGrid = new Map<string, Array<[number, number, number]>>(); // x, z, scale
   spawnHint: { x: number; z: number } | null = null;
 
   constructor(seed: number) {
@@ -276,11 +276,31 @@ export class World {
 
   // ------------------------------------------------------------ vegetation
 
-  private addTreeCollider(x: number, z: number) {
+  private addTreeCollider(x: number, z: number, scale: number) {
     const key = `${Math.floor(x / 8)},${Math.floor(z / 8)}`;
     let arr = this.treeGrid.get(key);
     if (!arr) this.treeGrid.set(key, (arr = []));
-    arr.push([x, z]);
+    arr.push([x, z, scale]);
+  }
+
+  /** A random tree within `r` of (x,z), for birds to perch on. */
+  randomTreeNear(x: number, z: number, r: number): { x: number; z: number; scale: number } | null {
+    const cx = Math.floor(x / 8);
+    const cz = Math.floor(z / 8);
+    const found: Array<[number, number, number]> = [];
+    const reach = Math.ceil(r / 8);
+    for (let i = -reach; i <= reach; i++) {
+      for (let j = -reach; j <= reach; j++) {
+        const arr = this.treeGrid.get(`${cx + i},${cz + j}`);
+        if (!arr) continue;
+        for (const t of arr) {
+          if (Math.hypot(x - t[0], z - t[1]) < r) found.push(t);
+        }
+      }
+    }
+    if (found.length === 0) return null;
+    const t = found[Math.floor(Math.random() * found.length)];
+    return { x: t[0], z: t[1], scale: t[2] };
   }
 
   /** Returns push-out vector if (x,z) is within `r` of a trunk, else null. */
@@ -337,11 +357,11 @@ export class World {
             tint: hash2(gx, gz, this.seed + 26),
           };
           (hash2(gx, gz, this.seed + 27) < 0.55 ? pines : broads).push(inst);
-          this.addTreeCollider(jx, jz);
+          this.addTreeCollider(jx, jz, inst.s);
         } else if (!forest && clear && r1 < 0.012) {
           const inst = { x: jx, z: jz, s: 0.9 + hash2(gx, gz, this.seed + 24), rot: 0, tint: hash2(gx, gz, this.seed + 26) };
           broads.push(inst);
-          this.addTreeCollider(jx, jz);
+          this.addTreeCollider(jx, jz, inst.s);
         } else if (!forest && clear && r1 > 0.6 && r1 < 0.78) {
           grassSpots.push({ x: jx, z: jz, s: 0.7 + hash2(gx, gz, this.seed + 30) * 0.8, rot: 0, tint: hash2(gx, gz, this.seed + 31) });
         } else if (!forest && clear && r1 > 0.985) {
@@ -408,17 +428,44 @@ export class World {
     const cG2 = new THREE.Color('#a7c96a');
     fill(grassGeo, grassMat, grassSpots, (i) => this.heightAt(i.x, i.z), (i, c) => c.copy(cG1).lerp(cG2, i.tint));
 
-    const flowerGeo = new THREE.SphereGeometry(0.16, 5, 4);
-    flowerGeo.translate(0, 0.35, 0);
-    const flowerMat = new THREE.MeshLambertMaterial({ color: '#ffffff' });
+    // flowers: a thin green stem with a small colored blossom on top
+    const stemGeo = new THREE.CylinderGeometry(0.015, 0.025, 0.3, 4);
+    stemGeo.translate(0, 0.15, 0);
+    const stemMat = new THREE.MeshLambertMaterial({ color: '#4e7a3a' });
+    fill(stemGeo, stemMat, flowers, (i) => this.heightAt(i.x, i.z));
+    const blossomGeo = new THREE.SphereGeometry(0.09, 6, 4);
+    blossomGeo.scale(1.3, 0.5, 1.3);
+    blossomGeo.translate(0, 0.32, 0);
+    const blossomMat = new THREE.MeshLambertMaterial({ color: '#ffffff' });
     const flowerPalette = ['#f2f0e4', '#e8c94e', '#d96a8a', '#8f7fd4'].map((s) => new THREE.Color(s));
-    fill(flowerGeo, flowerMat, flowers, (i) => this.heightAt(i.x, i.z), (i, c) => c.copy(flowerPalette[Math.floor(i.tint * flowerPalette.length) % flowerPalette.length]));
+    fill(blossomGeo, blossomMat, flowers, (i) => this.heightAt(i.x, i.z), (i, c) => c.copy(flowerPalette[Math.floor(i.tint * flowerPalette.length) % flowerPalette.length]));
 
+    // rocks: flattened, tilted, and half-sunk into the ground so they read
+    // as boulders instead of balls
     const rockGeo = new THREE.DodecahedronGeometry(0.8, 0);
+    rockGeo.scale(1.25, 0.55, 1);
     const rockMat = new THREE.MeshLambertMaterial({ color: '#ffffff', flatShading: true });
-    const cR1 = new THREE.Color('#8b8b86');
-    const cR2 = new THREE.Color('#a8a49a');
-    fill(rockGeo, rockMat, rocks, (i) => this.heightAt(i.x, i.z) + 0.15, (i, c) => c.copy(cR1).lerp(cR2, i.tint), true);
+    const cR1 = new THREE.Color('#77776f');
+    const cR2 = new THREE.Color('#9a968a');
+    const cMoss = new THREE.Color('#5f7a4a');
+    if (rocks.length > 0) {
+      const im = new THREE.InstancedMesh(rockGeo, rockMat, rocks.length);
+      const c = new THREE.Color();
+      const d = new THREE.Object3D();
+      rocks.forEach((i, k) => {
+        d.position.set(i.x, this.heightAt(i.x, i.z) - 0.12 * i.s, i.z);
+        d.rotation.set((i.tint - 0.5) * 0.35, i.rot, (i.tint - 0.5) * 0.25);
+        d.scale.set(i.s, i.s * (0.7 + i.tint * 0.5), i.s);
+        d.updateMatrix();
+        im.setMatrixAt(k, d.matrix);
+        c.copy(cR1).lerp(cR2, i.tint);
+        if (i.tint > 0.7) c.lerp(cMoss, 0.35); // mossy ones
+        im.setColorAt(k, c);
+      });
+      im.castShadow = true;
+      im.instanceMatrix.needsUpdate = true;
+      this.group.add(im);
+    }
   }
 
   // ---------------------------------------------------------------- towns

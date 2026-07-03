@@ -95,9 +95,40 @@
           <button id="btn-save">Save trip — download .zip</button>
           <button id="btn-load2">Load save file (.zip)</button>
           <button id="btn-help2">Instructions</button>
-          <button id="btn-music">Music: on</button>
+          <button id="btn-cheats">Cheats</button>
           <button id="btn-quit">Quit to title</button>
         </div>
+        <div class="slider-row">
+          <label for="vol-music">Music</label>
+          <input id="vol-music" type="range" min="0" max="100" step="1" />
+        </div>
+        <div class="slider-row">
+          <label for="vol-sfx">Effects</label>
+          <input id="vol-sfx" type="range" min="0" max="100" step="1" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Cheats -->
+    <div id="cheats" class="hidden">
+      <div class="panel">
+        <h2>Cheats</h2>
+        <p class="tagline">No judgement.</p>
+        <div class="menu-buttons">
+          <button id="btn-gallery">Species gallery — see every animal</button>
+          <button id="btn-cheats-close">Back</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Species gallery -->
+    <div id="gallery" class="hidden">
+      <div class="gallery-inner">
+        <div class="gallery-title">
+          <span>Species gallery — all 30</span>
+          <button id="btn-gallery-close">✕ close</button>
+        </div>
+        <div id="gallery-grid"><p class="gallery-loading">Developing portraits…</p></div>
       </div>
     </div>
 
@@ -108,40 +139,53 @@
         <div class="help-body">
           <p class="help-goal">
             Photograph every species in your field book. Fields, forests, towns, and water
-            each have their own animals — and fish only show up while you're wading.
+            each have their own animals — including villagers, and fish that only show up
+            while you're wading.
           </p>
           <div class="help-cols">
             <div class="help-col" id="help-desktop">
-              <h3>Computer</h3>
+              <h3>Computer controls</h3>
               <ul>
-                <li><b>Mouse</b> — look around</li>
-                <li><b>WASD</b> — walk · <b>Shift</b> — run · <b>C</b> — sneak</li>
-                <li><b>Click</b> — take a photo</li>
-                <li><b>Right-click</b> — hold to zoom</li>
-                <li><b>Space</b> — photo book · <b>Esc</b> — menu</li>
+                <li><b>Mouse</b> — look around (click once first to grab the mouse)</li>
+                <li><b>W A S D</b> or arrow keys — walk (relative to where you're looking)</li>
+                <li><b>Shift</b> — run (fast, but loud — animals bolt sooner)</li>
+                <li><b>C</b> — sneak (slow and quiet — get much closer)</li>
+                <li><b>Left-click</b> — take a photo</li>
+                <li><b>Right-click</b> — hold to zoom the lens</li>
+                <li><b>Space</b> — open/close the photo book · <b>← →</b> flip pages</li>
+                <li><b>Esc</b> — pause menu: save, load, volume, cheats</li>
               </ul>
             </div>
             <div class="help-col" id="help-touch">
-              <h3>Touch</h3>
+              <h3>Touch controls</h3>
               <ul>
-                <li><b>Drag</b> the view to look around</li>
-                <li><b>Joystick</b> (bottom-left) — move; push to the edge to run</li>
+                <li><b>Drag</b> anywhere on the view to look around</li>
+                <li><b>Joystick</b> (bottom-left) — move in any direction relative to your view; push it to the rim to run</li>
                 <li><b>Shutter</b> (bottom-right) — take a photo</li>
-                <li><b>Book</b> (bottom-centre) · <b>Cog</b> (top-right) — save &amp; load</li>
-                <li><b>Slider</b> (right edge) — zoom</li>
+                <li><b>Book</b> (bottom-centre) — your photo album</li>
+                <li><b>Slider</b> (right edge) — zoom; <b>+</b> is up</li>
+                <li><b>Cog</b> (top-right) — save, load, volume, cheats</li>
               </ul>
             </div>
           </div>
-          <div class="help-scoring">
-            <h3>Scoring</h3>
-            <ul>
-              <li><b>Framing is everything:</b> get the animal centered and filling the frame (walk closer or zoom in). Three stars are earned, not given.</li>
-              <li><b>Sizes:</b> every animal rolls a size, teeny-tiny to beyond-real-life MASSIVE. Extremes are rare and worth much more. Tiny specimens score almost entirely on centering.</li>
-              <li><b>Combos:</b> more animals in one shot = bonus points. The closest one gets the album page.</li>
-              <li><b>Birds in flight</b> earn a 1.5× bonus — spook one, then catch it on the wing.</li>
-              <li>Sneak up on shy animals; cats and dogs will come to you. Only your best shot per species is kept.</li>
-            </ul>
-          </div>
+          <h3>Moving around the world</h3>
+          <ul>
+            <li>Paths connect the towns — follow them, or cut through fields and forests.</li>
+            <li>You can <b>swim</b>: just walk into a lake. The deeper you wade, the higher the water rises up your screen and the slower you move — that's when fish appear around you.</li>
+            <li>Running is for covering ground, not for hunting: animals hear you from far away. When stalking, walk — or better, sneak.</li>
+          </ul>
+          <h3>How to get good shots</h3>
+          <ul>
+            <li><b>Framing decides your points:</b> put the animal in the <b>center</b> of the frame and make it <b>fill</b> as much of the photo as possible — move closer, or zoom in. Three stars are earned, not given.</li>
+            <li><b>Approach slowly.</b> Shy animals freeze and stare for a moment before bolting — that stare is your best photo window. After it, they run (or fly).</li>
+            <li><b>Cats and dogs come to you</b> — crouch down and wait. Villagers don't mind you unless you crowd them.</li>
+            <li><b>Sizes:</b> every animal rolls a random size, teeny-tiny to beyond-real-life MASSIVE. Extremes are rare and worth much more. Tiny specimens score almost entirely on centering — occupancy is forgiven.</li>
+            <li><b>Combos:</b> several animals in one shot = bonus points (+40% each). The closest animal gets the album page.</li>
+            <li><b>Birds in flight</b> earn a 1.5× bonus. Birds perch in trees and occasionally cross the sky right above you — look up! Or spook one and catch it on the wing.</li>
+            <li>Each photo takes a couple of seconds to <b>develop</b> — you can't shoot again until it's done, so make every shot count.</li>
+            <li>Only your <b>best shot per species</b> is kept, in the order you first found them.</li>
+            <li>Curious what a species looks like? Menu → <b>Cheats</b> → <b>Species gallery</b>.</li>
+          </ul>
         </div>
         <div class="menu-buttons">
           <button id="btn-help-close" class="primary">Close</button>

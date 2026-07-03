@@ -1,7 +1,8 @@
 // Generative chill ambient music, synthesized live with WebAudio.
 // No samples, no downloads — royalty-free by construction.
 
-const PREF_KEY = 'wildlife-polaroid-music';
+const PREF_KEY = 'wildlife-polaroid-music-vol';
+const BASE_GAIN = 0.16;
 
 const midiHz = (m: number) => 440 * Math.pow(2, (m - 69) / 12);
 
@@ -23,10 +24,15 @@ export class AmbientMusic {
   private chordIx = 0;
   private raf = 0;
   private lastT = 0;
-  enabled: boolean;
+  volume: number; // 0..1
 
   constructor() {
-    this.enabled = localStorage.getItem(PREF_KEY) !== 'off';
+    const stored = Number(localStorage.getItem(PREF_KEY));
+    this.volume = Number.isFinite(stored) && localStorage.getItem(PREF_KEY) !== null ? Math.min(1, Math.max(0, stored)) : 0.7;
+  }
+
+  get enabled(): boolean {
+    return this.volume > 0.01;
   }
 
   /** Call from a user gesture (browsers require one to start audio). */
@@ -38,7 +44,7 @@ export class AmbientMusic {
     try {
       this.ctx = new AudioContext();
       this.master = this.ctx.createGain();
-      this.master.gain.value = this.enabled ? 0.16 : 0;
+      this.master.gain.value = BASE_GAIN * this.volume;
       const soften = this.ctx.createBiquadFilter();
       soften.type = 'lowpass';
       soften.frequency.value = 2400;
@@ -111,11 +117,11 @@ export class AmbientMusic {
     osc.stop(t + 1.7);
   }
 
-  setEnabled(on: boolean) {
-    this.enabled = on;
-    localStorage.setItem(PREF_KEY, on ? 'on' : 'off');
+  setVolume(v: number) {
+    this.volume = Math.min(1, Math.max(0, v));
+    localStorage.setItem(PREF_KEY, String(this.volume));
     if (this.master && this.ctx) {
-      this.master.gain.setTargetAtTime(on ? 0.16 : 0, this.ctx.currentTime, 0.4);
+      this.master.gain.setTargetAtTime(BASE_GAIN * this.volume, this.ctx.currentTime, 0.25);
     }
   }
 
