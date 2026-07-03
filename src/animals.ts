@@ -540,24 +540,28 @@ export interface SizeRoll {
   bonus: number; // photo score multiplier for extremity
 }
 
+/** No animal renders smaller than this, no matter the roll — a handful of
+ *  pixels isn't a photo subject (or a spottable zombie). */
+export const MIN_VISUAL_SCALE = 0.27;
+
 /**
  * Animals vary from teeny-tiny to way-larger-than-life on a bell curve —
- * the extremes are rare and worth more points. factor spans ~0.22x to ~4.6x.
+ * the extremes are rare and worth more points. factor spans ~0.5x to ~4.6x.
  * `bias` (0..1) drags the curve toward the big end (easy mode).
  */
 export function rollSize(rand: () => number, bias = 0): SizeRoll {
   let g = (rand() + rand() + rand()) / 3; // bell-shaped in [0,1]
   g += bias * (1 - g);
-  const factor = Math.pow(2, (g - 0.5) * 4.4);
+  const factor = Math.max(0.5, Math.pow(2, (g - 0.5) * 4.4));
   return describeSize(factor);
 }
 
 export function describeSize(factor: number): SizeRoll {
   const e = Math.abs(Math.log2(factor));
   let label = '';
-  if (factor <= 0.32) label = 'Teeny-tiny';
-  else if (factor <= 0.5) label = 'Tiny';
-  else if (factor <= 0.75) label = 'Small';
+  if (factor <= 0.55) label = 'Teeny-tiny';
+  else if (factor <= 0.68) label = 'Tiny';
+  else if (factor <= 0.82) label = 'Small';
   else if (factor >= 3.4) label = 'MASSIVE';
   else if (factor >= 2.2) label = 'Huge';
   else if (factor >= 1.45) label = 'Big';
@@ -592,7 +596,9 @@ export class Animal {
   constructor(def: SpeciesDef, x: number, z: number, size: SizeRoll, private world: World) {
     this.def = def;
     this.size = size;
-    this.scale = def.baseScale * size.factor;
+    // labels/points come from the roll; the rendered size is floored so even
+    // a teeny-tiny robin stays clearly visible on screen
+    this.scale = Math.max(MIN_VISUAL_SCALE, def.baseScale * size.factor);
     this.rig = def.build();
     this.rig.group.scale.setScalar(this.scale);
     this.heading = Math.random() * Math.PI * 2;

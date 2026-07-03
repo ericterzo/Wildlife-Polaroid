@@ -15,15 +15,29 @@ const CHORDS: number[][] = [
 ];
 const PENTATONIC = [62, 64, 66, 69, 71, 74, 76, 78]; // D E F# A B up two octaves
 
+// zombie mode: low dissonant clusters (minor seconds + tritones) and a
+// hectic minor scale for the stabs
+const ZOMBIE_CHORDS: number[][] = [
+  [38, 44, 45, 51], // D  G# A  D# — tritone stack
+  [36, 42, 43, 49], // C  F# G  C#
+  [39, 45, 46, 52], // D# A  A# E
+  [37, 43, 44, 50], // C# G  G# D
+];
+const ZOMBIE_SCALE = [50, 53, 56, 57, 60, 62, 63, 65]; // harmonic-minor-ish
+
+export type MusicMode = 'chill' | 'zombie';
+
 export class AmbientMusic {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
   private delay: DelayNode | null = null;
   private chordTimer = 0;
   private pluckTimer = 0;
+  private thumpTimer = 0;
   private chordIx = 0;
   private raf = 0;
   private lastT = 0;
+  mode: MusicMode = 'chill';
   volume: number; // 0..1
 
   constructor() {
@@ -67,14 +81,26 @@ export class AmbientMusic {
         if (!this.enabled || !this.ctx || this.ctx.state !== 'running') return;
         this.chordTimer -= dt;
         this.pluckTimer -= dt;
+        this.thumpTimer -= dt;
+        const zombie = this.mode === 'zombie';
         if (this.chordTimer <= 0) {
-          this.chordTimer = 9;
-          this.playChord(CHORDS[this.chordIx % CHORDS.length]);
+          this.chordTimer = zombie ? 3.6 : 9;
+          const set = zombie ? ZOMBIE_CHORDS : CHORDS;
+          this.playChord(set[this.chordIx % set.length], zombie);
           this.chordIx++;
         }
         if (this.pluckTimer <= 0) {
-          this.pluckTimer = 2.2 + Math.random() * 4.5;
-          this.pluck(PENTATONIC[Math.floor(Math.random() * PENTATONIC.length)]);
+          if (zombie) {
+            this.pluckTimer = 0.28 + Math.random() * 0.5; // hectic stabs
+            this.stab(ZOMBIE_SCALE[Math.floor(Math.random() * ZOMBIE_SCALE.length)]);
+          } else {
+            this.pluckTimer = 2.2 + Math.random() * 4.5;
+            this.pluck(PENTATONIC[Math.floor(Math.random() * PENTATONIC.length)]);
+          }
+        }
+        if (zombie && this.thumpTimer <= 0) {
+          this.thumpTimer = 0.82; // racing heartbeat
+          this.thump();
         }
       };
       tick();
@@ -83,21 +109,24 @@ export class AmbientMusic {
     }
   }
 
-  private playChord(notes: number[]) {
+  private playChord(notes: number[], dark = false) {
     const ctx = this.ctx!;
     const t = ctx.currentTime;
     for (const n of notes) {
       const osc = ctx.createOscillator();
-      osc.type = Math.random() < 0.5 ? 'sine' : 'triangle';
+      osc.type = dark ? 'sawtooth' : Math.random() < 0.5 ? 'sine' : 'triangle';
       osc.frequency.value = midiHz(n);
-      osc.detune.value = (Math.random() - 0.5) * 10;
+      osc.detune.value = (Math.random() - 0.5) * (dark ? 26 : 10); // dark = uneasy detune
       const g = ctx.createGain();
+      const peak = dark ? 0.028 : 0.05;
+      const swell = dark ? 0.7 : 3.2;
+      const tail = dark ? 4.4 : 10.5;
       g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(0.05, t + 3.2); // slow swell
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 10.5); // long fade
+      g.gain.exponentialRampToValueAtTime(peak, t + swell);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + tail);
       osc.connect(g).connect(this.master!);
       osc.start(t);
-      osc.stop(t + 11);
+      osc.stop(t + tail + 0.5);
     }
   }
 
@@ -115,6 +144,50 @@ export class AmbientMusic {
     g.connect(this.delay!);
     osc.start(t);
     osc.stop(t + 1.7);
+  }
+
+  /** Short nervous square-wave stab — zombie mode's replacement for plucks. */
+  private stab(note: number) {
+    const ctx = this.ctx!;
+    const t = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    osc.type = 'square';
+    osc.frequency.value = midiHz(note);
+    osc.detune.value = (Math.random() - 0.5) * 18;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.045, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+    osc.connect(g);
+    g.connect(this.master!);
+    g.connect(this.delay!);
+    osc.start(t);
+    osc.stop(t + 0.3);
+  }
+
+  /** Low heartbeat thump under everything. */
+  private thump() {
+    const ctx = this.ctx!;
+    const t = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(58, t);
+    osc.frequency.exponentialRampToValueAtTime(36, t + 0.16);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.16, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
+    osc.connect(g).connect(this.master!);
+    osc.start(t);
+    osc.stop(t + 0.25);
+  }
+
+  setMode(mode: MusicMode) {
+    if (this.mode === mode) return;
+    this.mode = mode;
+    // switch immediately rather than waiting out the current timers
+    this.chordTimer = 0.15;
+    this.pluckTimer = 0.4;
+    this.thumpTimer = 0.1;
+    this.chordIx = 0;
   }
 
   setVolume(v: number) {

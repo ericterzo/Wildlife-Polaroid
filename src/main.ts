@@ -238,6 +238,7 @@ const zombie = new ZombieMode(
 function endZombieMode() {
   if (!zombie.active && !zombie.dead) return;
   if (session) zombie.end(session.spawner);
+  music.setMode('chill');
   document.getElementById('gameover')!.classList.add('hidden');
   document.getElementById('zombie-hud')!.classList.add('hidden');
 }
@@ -472,6 +473,7 @@ document.getElementById('btn-zombie')!.addEventListener('click', () => {
   state = 'playing';
   endZombieMode();
   zombie.begin(session.spawner);
+  music.setMode('zombie');
   document.getElementById('zombie-hud')!.classList.remove('hidden');
   ui.toast('🧟 They can smell you. Swing with the shutter button. Survive.');
   if (!IS_TOUCH) canvas.requestPointerLock();
@@ -748,6 +750,9 @@ ui.showTitle(loadAutosave() !== null);
   },
   get zombie() {
     return zombie;
+  },
+  get music() {
+    return music;
   },
   swing: shootOrSwing,
   takePhoto,
