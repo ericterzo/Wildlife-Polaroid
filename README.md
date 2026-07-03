@@ -58,8 +58,12 @@ Pages/Netlify/any static host).
 - Chill **generative ambient music**, synthesized in-browser (royalty-free by
   construction), with separate music/effects volume sliders in the menu. The
   shutter sounds like a real polaroid: click, motor whirr, print clunk.
-- A **Cheats** submenu holds a species gallery with a rendered portrait of
-  every animal, so you know what you're looking for.
+- A **Cheats** submenu holds: a species gallery with a rendered portrait of
+  every animal; **Easy mode** (many more animals, closer, bigger); and
+  **🧟 Zombie survival** — every animal turns green with red eyes and hunts
+  you, the camera becomes a hatchet, five hits and you're done. A day passes
+  every 30 seconds and each day brings more, faster zombies. Score =
+  days × 100 + kills × 10.
 
 ### Saving
 

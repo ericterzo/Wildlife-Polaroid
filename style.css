@@ -522,6 +522,72 @@ button.primary:hover {
   background: rgba(14, 20, 16, 0.9);
 }
 
+/* --------------------------------------------------------- zombie mode */
+
+#zombie-hud {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #f0e8e0;
+  background: rgba(40, 12, 10, 0.72);
+  border: 1px solid rgba(224, 60, 40, 0.5);
+  padding: 8px 18px;
+  border-radius: 8px;
+  font-size: 17px;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+body.zombie-mode #score,
+body.zombie-mode #viewfinder,
+body.zombie-mode #zoom-wrap,
+body.zombie-mode #t-book {
+  display: none !important;
+}
+body.zombie-mode #crosshair {
+  background: rgba(224, 60, 40, 0.9);
+}
+body.zombie-mode #hint {
+  display: none;
+}
+
+#hurt {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(ellipse at center, rgba(120, 10, 5, 0) 45%, rgba(150, 12, 6, 0.65) 100%);
+}
+#hurt.go {
+  animation: hurt-anim 0.7s ease-out;
+}
+@keyframes hurt-anim {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+#gameover {
+  position: fixed;
+  inset: 0;
+  z-index: 33;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(ellipse at center, rgba(60, 10, 8, 0.88), rgba(18, 5, 4, 0.97));
+}
+#gameover .panel h2 {
+  color: #8a1410;
+}
+.go-score {
+  font-size: 30px;
+  color: #8a1410;
+  margin: 10px 0 16px;
+  font-family: 'Segoe Print', 'Comic Sans MS', cursive;
+}
+#gameover-stats {
+  color: #6a635a;
+}
+
 /* -------------------------------------------------------- instructions */
 
 #help {

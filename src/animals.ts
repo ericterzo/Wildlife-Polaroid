@@ -543,9 +543,11 @@ export interface SizeRoll {
 /**
  * Animals vary from teeny-tiny to way-larger-than-life on a bell curve —
  * the extremes are rare and worth more points. factor spans ~0.22x to ~4.6x.
+ * `bias` (0..1) drags the curve toward the big end (easy mode).
  */
-export function rollSize(rand: () => number): SizeRoll {
-  const g = (rand() + rand() + rand()) / 3; // bell-shaped in [0,1]
+export function rollSize(rand: () => number, bias = 0): SizeRoll {
+  let g = (rand() + rand() + rand()) / 3; // bell-shaped in [0,1]
+  g += bias * (1 - g);
   const factor = Math.pow(2, (g - 0.5) * 4.4);
   return describeSize(factor);
 }
@@ -582,6 +584,10 @@ export class Animal {
   /** Set when the bird is sitting in a tree; cleared when it takes off. */
   perchY: number | null = null;
   private flyoverY = 0;
+  // -- zombie mode --
+  zombie = false;
+  zombieSpeed = 1; // difficulty multiplier, updated by ZombieMode
+  zombieStun = 0; // seconds of knockback stun after clawing the player
 
   constructor(def: SpeciesDef, x: number, z: number, size: SizeRoll, private world: World) {
     this.def = def;
@@ -677,6 +683,11 @@ export class Animal {
   }
 
   update(dt: number, playerPos: THREE.Vector3, playerNoise: number) {
+    if (this.zombie) {
+      this.animT += dt;
+      this.updateZombie(dt, playerPos);
+      return;
+    }
     this.stateT += dt;
     this.animT += dt;
     const p = this.position;
@@ -799,6 +810,43 @@ export class Animal {
     }
   }
 
+  /** Zombie AI: shamble straight at the player, always. */
+  private updateZombie(dt: number, playerPos: THREE.Vector3) {
+    const p = this.position;
+    const dx = playerPos.x - p.x;
+    const dz = playerPos.z - p.z;
+    const dist = Math.hypot(dx, dz);
+    this.moving = false;
+
+    if (this.zombieStun > 0) {
+      this.zombieStun -= dt;
+    } else if (dist > 1.1 && dist < 90) {
+      this.turnToward(Math.atan2(dx, dz), dt * 1.6);
+      const speed = this.def.speed * 0.45 * this.zombieSpeed;
+      const nx = p.x + Math.sin(this.heading) * speed * dt;
+      const nz = p.z + Math.cos(this.heading) * speed * dt;
+      const [cx, cz] = this.world.collide(nx, nz, 0.5 * this.scale);
+      // zombies wade straight through ponds
+      p.set(cx, Math.max(this.world.heightAt(cx, cz), WATER_Y - 0.25), cz);
+      this.rig.group.rotation.y = this.heading;
+      this.moving = true;
+    }
+
+    // lurching walk + hungry head tilt
+    const amp = this.moving ? 0.5 : 0;
+    const villagerArms = this.def.id === 'villager';
+    this.rig.legs.forEach((leg, i) => {
+      if (villagerArms && i >= 2) {
+        leg.rotation.x = -1.35 + Math.sin(this.animT * 4 + i) * 0.12; // arms out, zombie-style
+      } else {
+        leg.rotation.x = Math.sin(this.animT * 6 + (i % 2 === 0 ? 0 : Math.PI)) * amp;
+      }
+    });
+    this.rig.group.rotation.z = Math.sin(this.animT * 3.1) * 0.05; // unsettling sway
+    this.rig.head.rotation.x = THREE.MathUtils.lerp(this.rig.head.rotation.x, -0.2, dt * 4);
+    if (this.rig.tail) this.rig.tail.rotation.y = 0;
+  }
+
   private turnToward(want: number, dt: number) {
     let dh = want - this.heading;
     while (dh > Math.PI) dh -= Math.PI * 2;
@@ -839,15 +887,26 @@ export class AnimalSpawner {
   private fishCooldown = 0;
   private flyoverTimer = 8; // first flyover comes fairly soon
 
+  /** Easy mode: far more animals, closer, and bigger on average. */
+  easy = false;
+  /** Zombie mode: the spawner feeds the horde instead of the meadow. */
+  zombieMax = 0; // 0 = zombie mode off
+  zombieInterval = 1.2;
+  onSpawn: ((a: Animal) => void) | null = null; // zombification hook
+
   constructor(private world: World, private scene: THREE.Scene) {}
 
   update(dt: number, playerPos: THREE.Vector3, playerNoise: number, playerWaterDepth = 0) {
     this.cooldown -= dt;
     this.fishCooldown -= dt;
-    this.flyoverTimer -= dt;
-    if (this.flyoverTimer <= 0) {
-      this.flyoverTimer = 16 + Math.random() * 20;
-      this.spawnFlyover(playerPos);
+    const zombieMode = this.zombieMax > 0;
+
+    if (!zombieMode) {
+      this.flyoverTimer -= dt;
+      if (this.flyoverTimer <= 0) {
+        this.flyoverTimer = 16 + Math.random() * 20;
+        this.spawnFlyover(playerPos);
+      }
     }
     for (let i = this.animals.length - 1; i >= 0; i--) {
       const a = this.animals[i];
@@ -860,9 +919,18 @@ export class AnimalSpawner {
       }
     }
     const landCount = this.animals.filter((a) => !a.def.aquatic).length;
-    if (landCount < MAX_ANIMALS && this.cooldown <= 0) {
-      this.cooldown = 0.6;
-      for (let i = 0; i < 3; i++) this.trySpawn(playerPos);
+    if (zombieMode) {
+      if (landCount < this.zombieMax && this.cooldown <= 0) {
+        this.cooldown = this.zombieInterval;
+        for (let i = 0; i < 4; i++) this.trySpawnZombie(playerPos);
+      }
+      return; // no fish, no perching, no flyovers while the dead walk
+    }
+    const maxAnimals = this.easy ? 26 : MAX_ANIMALS;
+    if (landCount < maxAnimals && this.cooldown <= 0) {
+      this.cooldown = this.easy ? 0.25 : 0.6;
+      const burst = this.easy ? 8 : 3;
+      for (let i = 0; i < burst; i++) this.trySpawn(playerPos);
     }
     // fish only show up while the player is wading
     const fishCount = this.animals.length - landCount;
@@ -886,7 +954,9 @@ export class AnimalSpawner {
 
   private trySpawn(playerPos: THREE.Vector3) {
     const ang = Math.random() * Math.PI * 2;
-    const dist = SPAWN_MIN + Math.random() * (SPAWN_MAX - SPAWN_MIN);
+    const near = this.easy ? 22 : SPAWN_MIN;
+    const far = this.easy ? 75 : SPAWN_MAX;
+    const dist = near + Math.random() * (far - near);
     const x = playerPos.x + Math.cos(ang) * dist;
     const z = playerPos.z + Math.sin(ang) * dist;
     if (Math.abs(x) > 570 || Math.abs(z) > 570) return;
@@ -894,7 +964,7 @@ export class AnimalSpawner {
     const pool = LAND_SPECIES.filter((s) => s.habitats.includes(habitat));
     const def = this.weightedPick(pool);
     if (!def) return;
-    if (this.animals.filter((a) => a.def.id === def.id).length >= 3) return;
+    if (this.animals.filter((a) => a.def.id === def.id).length >= (this.easy ? 5 : 3)) return;
     if (def.swims && this.world.heightAt(x, z) > WATER_Y - 0.15) return;
     if (!def.swims && this.world.heightAt(x, z) < WATER_Y + 0.15) return;
     const animal = this.spawn(def, x, z);
@@ -934,10 +1004,24 @@ export class AnimalSpawner {
     this.spawn(def, x, z);
   }
 
+  /** A fresh member of the horde, somewhere in a ring around the player. */
+  private trySpawnZombie(playerPos: THREE.Vector3) {
+    const ang = Math.random() * Math.PI * 2;
+    const dist = 35 + Math.random() * 55;
+    const x = playerPos.x + Math.cos(ang) * dist;
+    const z = playerPos.z + Math.sin(ang) * dist;
+    if (Math.abs(x) > 570 || Math.abs(z) > 570) return;
+    if (this.world.heightAt(x, z) < WATER_Y - 1.5) return; // not from the deep
+    const def = this.weightedPick(LAND_SPECIES);
+    if (!def) return;
+    this.spawn(def, x, z);
+  }
+
   private spawn(def: SpeciesDef, x: number, z: number): Animal {
-    const animal = new Animal(def, x, z, rollSize(Math.random), this.world);
+    const animal = new Animal(def, x, z, rollSize(Math.random, this.easy ? 0.35 : 0), this.world);
     this.scene.add(animal.rig.group);
     this.animals.push(animal);
+    this.onSpawn?.(animal);
     return animal;
   }
 

@@ -7,8 +7,9 @@ import { SaveData, downloadSave, parseSaveZip, buildSaveZip, autosave, loadAutos
 import { UI } from './ui';
 import { AmbientMusic } from './music';
 import { generatePortraits } from './gallery';
+import { ZombieMode } from './zombie';
 
-type GameState = 'title' | 'playing' | 'book' | 'paused';
+type GameState = 'title' | 'playing' | 'book' | 'paused' | 'gameover';
 
 /** Touch devices get on-screen controls instead of pointer lock + keyboard. */
 const IS_TOUCH =
@@ -156,6 +157,44 @@ const newSpeciesSound = () => {
   setTimeout(() => blip(1320, 0.2, 'triangle', 0.06), 230);
 };
 
+// zombie-mode noises
+const swingSound = () => {
+  const ctx = ensureAudio();
+  if (!ctx || sfxVolume <= 0) return;
+  const t = ctx.currentTime;
+  const src = ctx.createBufferSource();
+  src.buffer = noiseBuffer!;
+  src.loop = true;
+  const bp = ctx.createBiquadFilter();
+  bp.type = 'bandpass';
+  bp.frequency.setValueAtTime(350, t);
+  bp.frequency.exponentialRampToValueAtTime(1600, t + 0.16); // whoosh rises
+  bp.Q.value = 1.4;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.18 * sfxVolume, t + 0.05);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
+  src.connect(bp).connect(g).connect(ctx.destination);
+  src.start(t);
+  src.stop(t + 0.25);
+};
+const squishSound = () => {
+  const ctx = ensureAudio();
+  if (!ctx || sfxVolume <= 0) return;
+  noiseHit(ctx, ctx.currentTime, 0.14, 240, 0.8, 0.4);
+  blip(90, 0.16, 'sine', 0.12);
+};
+const hurtSound = () => {
+  blip(180, 0.22, 'sawtooth', 0.1);
+  const ctx = ensureAudio();
+  if (ctx && sfxVolume > 0) noiseHit(ctx, ctx.currentTime, 0.1, 900, 1, 0.2);
+};
+const deathSound = () => {
+  blip(330, 0.3, 'sawtooth', 0.09);
+  setTimeout(() => blip(247, 0.35, 'sawtooth', 0.09), 260);
+  setTimeout(() => blip(165, 0.8, 'sawtooth', 0.1), 540);
+};
+
 // ------------------------------------------------------------------ state
 
 interface Session {
@@ -174,8 +213,34 @@ let shotCooldown = 0; // while > 0, the polaroid is still developing — no phot
 let autosaveTimer = 0;
 let wasLocked = false;
 const DEVELOP_TIME = 2.6; // seconds a photo takes to develop
+let easyMode = false;
 
 const music = new AmbientMusic();
+
+const zombie = new ZombieMode(
+  scene,
+  camera,
+  { swing: swingSound, squish: squishSound, hurt: hurtSound, death: deathSound },
+  () => {
+    // the horde got you
+    state = 'gameover';
+    session?.player.clearKeys();
+    document.exitPointerLock();
+    document.getElementById('gameover-stats')!.textContent =
+      `You survived ${zombie.day} day${zombie.day === 1 ? '' : 's'} and put down ${zombie.kills} zombie${zombie.kills === 1 ? '' : 's'}.`;
+    document.getElementById('gameover-score')!.textContent =
+      `${zombie.day} × 100 + ${zombie.kills} × 10 = ${zombie.score} points`;
+    document.getElementById('gameover')!.classList.remove('hidden');
+    document.getElementById('hud')!.classList.add('hidden');
+  }
+);
+
+function endZombieMode() {
+  if (!zombie.active && !zombie.dead) return;
+  if (session) zombie.end(session.spawner);
+  document.getElementById('gameover')!.classList.add('hidden');
+  document.getElementById('zombie-hud')!.classList.add('hidden');
+}
 
 const ui = new UI({
   onNewGame: (seed) => beginTrip({ seed, elapsed: 0, player: null as never, photos: [] }, true),
@@ -206,6 +271,7 @@ const ui = new UI({
     }
   },
   onQuit: () => {
+    endZombieMode();
     if (session) autosave(snapshot(session));
     state = 'title';
     document.exitPointerLock();
@@ -232,6 +298,7 @@ function beginTrip(data: SaveData, isNew: boolean) {
   ui.titleStatus('Developing the world…');
   // let the status paint before the synchronous world build
   setTimeout(() => {
+    endZombieMode();
     if (session) {
       session.spawner.clear();
       scene.remove(session.world.group);
@@ -253,6 +320,7 @@ function beginTrip(data: SaveData, isNew: boolean) {
       photos: data.photos ?? [],
       elapsed: data.elapsed ?? 0,
     };
+    session.spawner.easy = easyMode;
     state = 'playing';
     ui.showPlaying();
     updateScore();
@@ -388,6 +456,40 @@ document.getElementById('btn-gallery')!.addEventListener('click', () => {
 });
 document.getElementById('btn-gallery-close')!.addEventListener('click', () => galleryEl.classList.add('hidden'));
 
+// easy mode: way more animals, closer, bigger
+const easyBtn = document.getElementById('btn-easy')!;
+easyBtn.addEventListener('click', () => {
+  easyMode = !easyMode;
+  if (session) session.spawner.easy = easyMode;
+  easyBtn.textContent = `Easy mode: ${easyMode ? 'ON' : 'off'}`;
+});
+
+// zombie survival
+document.getElementById('btn-zombie')!.addEventListener('click', () => {
+  if (!session) return;
+  cheatsEl.classList.add('hidden');
+  ui.hidePause();
+  state = 'playing';
+  endZombieMode();
+  zombie.begin(session.spawner);
+  document.getElementById('zombie-hud')!.classList.remove('hidden');
+  ui.toast('🧟 They can smell you. Swing with the shutter button. Survive.');
+  if (!IS_TOUCH) canvas.requestPointerLock();
+});
+
+document.getElementById('btn-go-return')!.addEventListener('click', () => {
+  endZombieMode();
+  state = 'playing';
+  document.getElementById('hud')!.classList.remove('hidden');
+  ui.toast('Just a bad dream. The animals are back to normal.');
+});
+document.getElementById('btn-go-quit')!.addEventListener('click', () => {
+  endZombieMode();
+  if (session) autosave(snapshot(session));
+  state = 'title';
+  ui.showTitle(loadAutosave() !== null);
+});
+
 if (!IS_TOUCH) {
   canvas.addEventListener('mousedown', (e) => {
     if (state !== 'playing' || !session) return;
@@ -395,7 +497,7 @@ if (!IS_TOUCH) {
       canvas.requestPointerLock();
       return;
     }
-    if (e.button === 0) takePhoto();
+    if (e.button === 0) shootOrSwing();
     if (e.button === 2) aiming = true;
   });
   window.addEventListener('mouseup', (e) => {
@@ -487,7 +589,7 @@ if (IS_TOUCH) {
 
   document.getElementById('t-snap')!.addEventListener('pointerdown', (e) => {
     e.preventDefault();
-    if (state === 'playing') takePhoto();
+    if (state === 'playing') shootOrSwing();
   });
 
   document.getElementById('t-book')!.addEventListener('pointerdown', (e) => {
@@ -511,7 +613,18 @@ if (IS_TOUCH) {
   });
 }
 
+/** The one action button: camera normally, hatchet while zombies roam. */
+function shootOrSwing() {
+  if (!session) return;
+  if (zombie.active) zombie.trySwing(session.spawner, session.player);
+  else takePhoto();
+}
+
 function toggleBook() {
+  if (state === 'playing' && zombie.active) {
+    ui.toast('No time for scrapbooking — they are COMING');
+    return;
+  }
   if (state === 'playing' && session) {
     state = 'book';
     session.player.clearKeys();
@@ -585,19 +698,25 @@ function tick() {
     }
     session.player.update(dt);
     const depth = session.player.waterDepth;
+    // zombies are drawn to noise regardless; noiseFactor only matters in normal mode
     session.spawner.update(dt, session.player.position, session.player.noiseFactor, depth);
+    if (zombie.active) {
+      zombie.update(dt, session.spawner, session.player, session.world);
+      const hud = document.getElementById('zombie-hud')!;
+      hud.textContent = zombie.hudText();
+    }
 
     // wading: blue rises from the bottom of the screen with depth
     const waterPct = Math.min(48, Math.max(0, depth - 0.15) * 26);
     waterOverlay.style.height = waterPct > 1 ? `${waterPct}vh` : '0px';
 
-    // camera zoom: slider on touch, right-click on desktop
-    const targetFov = IS_TOUCH ? touchZoomFov : aiming ? 40 : 70;
+    // camera zoom: slider on touch, right-click on desktop (no zoom on a hatchet)
+    const targetFov = zombie.active ? 70 : IS_TOUCH ? touchZoomFov : aiming ? 40 : 70;
     if (Math.abs(camera.fov - targetFov) > 0.1) {
       camera.fov = THREE.MathUtils.lerp(camera.fov, targetFov, Math.min(1, dt * 10));
       camera.updateProjectionMatrix();
     }
-    ui.setViewfinder(camera.fov < 58);
+    ui.setViewfinder(!zombie.active && camera.fov < 58);
 
     // golden-hour sun follows the player so shadows stay crisp
     sun.position.set(session.player.position.x + 70, 95, session.player.position.z + 45);
@@ -627,6 +746,10 @@ ui.showTitle(loadAutosave() !== null);
   get cooldown() {
     return shotCooldown;
   },
+  get zombie() {
+    return zombie;
+  },
+  swing: shootOrSwing,
   takePhoto,
   snapshot: () => (session ? snapshot(session) : null),
   openBook: () => {
