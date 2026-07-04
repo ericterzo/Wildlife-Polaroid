@@ -52,6 +52,11 @@ export class UI {
     $('book-prev').addEventListener('click', () => this.flipBook(-1));
     $('book-next').addEventListener('click', () => this.flipBook(1));
     $('book-close').addEventListener('click', () => cb.onCloseBook());
+
+    // Once a one-shot animation finishes, park the element for good —
+    // otherwise hiding and re-showing the HUD (pause menus) can replay it.
+    $('toast').addEventListener('animationend', () => $('toast').classList.add('hidden'));
+    $('flash').addEventListener('animationend', () => $('flash').classList.remove('go'));
   }
 
   // ------------------------------------------------------------- screens
@@ -118,6 +123,11 @@ export class UI {
     const wrap = document.createElement('div');
     wrap.className = 'dev-wrap';
     wrap.style.setProperty('--dev-time', `${seconds}s`);
+    wrap.addEventListener('animationend', (e) => {
+      // pin each finished animation so a HUD hide/show can't replay it
+      if (e.pseudoElement === '::after') wrap.classList.add('developed');
+      else wrap.classList.add('ejected');
+    });
     const img = document.createElement('img');
     img.src = dataUrl;
     wrap.appendChild(img);

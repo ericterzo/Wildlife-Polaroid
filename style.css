@@ -176,6 +176,13 @@ body {
   from { transform: translateY(60px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
 }
+#develop .dev-wrap.ejected {
+  animation: none;
+}
+#develop .dev-wrap.developed::after {
+  animation: none;
+  opacity: 0;
+}
 @keyframes develop-fade {
   0% { opacity: 1; }
   35% { opacity: 0.95; }

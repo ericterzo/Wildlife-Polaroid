@@ -210,6 +210,8 @@ let state: GameState = 'title';
 let session: Session | null = null;
 let aiming = false;
 let shotCooldown = 0; // while > 0, the polaroid is still developing — no photos
+let inputGrace = 0; // brief action-button lockout after closing menus, so the
+// click/tap that re-enters the game can't fire an accidental photo or swing
 let autosaveTimer = 0;
 let wasLocked = false;
 const DEVELOP_TIME = 2.6; // seconds a photo takes to develop
@@ -263,6 +265,7 @@ const ui = new UI({
   onResume: () => {
     if (!IS_TOUCH) renderer.domElement.requestPointerLock();
     state = 'playing';
+    inputGrace = 0.5;
     ui.hidePause();
   },
   onSave: () => {
@@ -281,6 +284,7 @@ const ui = new UI({
   onCloseBook: () => {
     if (state === 'book') {
       state = 'playing';
+      inputGrace = 0.5;
       ui.closeBook();
     }
   },
@@ -411,6 +415,12 @@ const canvas = renderer.domElement;
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 const waterOverlay = document.getElementById('water-overlay')!;
 
+// park zombie-mode one-shot animations once they finish (see ui.ts note)
+for (const id of ['hurt', 'kill-feed']) {
+  const el = document.getElementById(id)!;
+  el.addEventListener('animationend', () => el.classList.remove('go'));
+}
+
 // instructions overlay (title screen + pause menu)
 const helpEl = document.getElementById('help')!;
 for (const id of ['btn-help', 'btn-help2']) {
@@ -484,6 +494,7 @@ document.getElementById('btn-zombie')!.addEventListener('click', () => {
 document.getElementById('btn-go-return')!.addEventListener('click', () => {
   endZombieMode();
   state = 'playing';
+  inputGrace = 0.5;
   document.getElementById('hud')!.classList.remove('hidden');
   ui.toast('Just a bad dream. The animals are back to normal.');
 });
@@ -619,7 +630,7 @@ if (IS_TOUCH) {
 
 /** The one action button: camera normally, hatchet while zombies roam. */
 function shootOrSwing() {
-  if (!session) return;
+  if (!session || inputGrace > 0) return;
   if (zombie.active) zombie.trySwing(session.spawner, session.player);
   else takePhoto();
 }
@@ -637,6 +648,7 @@ function toggleBook() {
     if (!IS_TOUCH) document.exitPointerLock();
   } else if (state === 'book') {
     state = 'playing';
+    inputGrace = 0.5;
     ui.closeBook();
     if (!IS_TOUCH) canvas.requestPointerLock();
   }
@@ -694,6 +706,7 @@ function tick() {
   if (session && state === 'playing') {
     session.elapsed += dt;
     shotCooldown -= dt;
+    inputGrace -= dt;
     autosaveTimer += dt;
     if (autosaveTimer > 10) {
       autosaveTimer = 0;
@@ -749,6 +762,9 @@ ui.showTitle(loadAutosave() !== null);
   },
   get cooldown() {
     return shotCooldown;
+  },
+  get grace() {
+    return inputGrace;
   },
   get zombie() {
     return zombie;
