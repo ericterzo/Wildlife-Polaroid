@@ -1,0 +1,82 @@
+#!/bin/sh
+# prepare-commit-msg — every commit rides out of town wearing a random
+# western nickname: "— Eric [Nickname] Serra". Yeehaw.
+
+MSG_FILE="$1"
+COMMIT_SOURCE="$2"
+
+# don't brand merges, squashes, or messages that already carry the iron
+case "$COMMIT_SOURCE" in
+  merge|squash) exit 0 ;;
+esac
+grep -q "Eric \[.*\] Serra" "$MSG_FILE" && exit 0
+
+NICKNAMES="Rattler
+Sixgun
+Coyote
+Maverick
+Deadwood
+Copperhead
+Renegade
+Buckshot
+Widowmaker
+Sundance
+Cutthroat
+Ironhand
+Blackjack
+Tumbleweed
+Rattlesnake
+Grizzly
+Buzzard
+Diamondback
+Sidewinder
+Timber
+Wolfpack
+Prairie Dog
+Bronco
+Jackrabbit
+Coalhorn
+Roadrunner
+Deuces
+Ace
+Faro
+High Stakes
+Lucky
+Dealer's Choice
+Longshot
+Whiskey
+Bourbon
+Poker Face
+Dust
+Gritstone
+Flint
+Sawdust
+Iron Horse
+Boothill
+Cactus
+Dry Gulch
+Powder Keg
+Saddlebag
+Wagon Wheel
+Prospector
+Sagebrush
+Buckboard
+Cyclone
+Thunder
+Ghost
+Shadow
+Drifter
+Ranger
+Marshal
+Bandit
+Hangman
+Preacher
+Doc
+Ironsides"
+
+COUNT=$(printf '%s\n' "$NICKNAMES" | wc -l)
+# seed with time + PID so back-to-back commits still get fresh draws
+PICK=$(awk -v seed="$(date +%s)$$" -v n="$COUNT" 'BEGIN { srand(seed); print int(rand() * n) + 1 }')
+NICK=$(printf '%s\n' "$NICKNAMES" | sed -n "${PICK}p")
+
+printf '\n— Eric [%s] Serra\n' "$NICK" >> "$MSG_FILE"
