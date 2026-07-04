@@ -172,22 +172,25 @@ export class ZombieMode {
       }
     }
 
-    // hatchet idle bob + swing animation: chops in toward the screen center
+    // hatchet idle bob + swing animation: the blade-end arcs right into the
+    // red dot at screen center, like you're chopping what you're aiming at
     if (this.swingT >= 0) {
       this.swingT += dt;
       const t = Math.min(1, this.swingT / 0.24);
       const arc = Math.sin(t * Math.PI); // out and back
-      this.hatchet.rotation.x = HATCHET_REST_X - arc * 1.5;
-      this.hatchet.rotation.z = HATCHET_REST_Z - arc * 0.9;
-      this.hatchet.position.x = HATCHET_REST_POS.x - arc * 0.3; // sweep to center
-      this.hatchet.position.y = HATCHET_REST_POS.y + arc * 0.06;
+      this.hatchet.rotation.x = HATCHET_REST_X - arc * 1.2; // pitch the head forward
+      this.hatchet.rotation.y = -arc * 0.55; // turn the blade in toward center
+      this.hatchet.rotation.z = HATCHET_REST_Z - arc * 0.25;
+      this.hatchet.position.x = HATCHET_REST_POS.x - arc * 0.35; // slide to center...
+      this.hatchet.position.y = HATCHET_REST_POS.y + arc * 0.36; // ...raise the grip...
+      this.hatchet.position.z = HATCHET_REST_POS.z - arc * 0.14; // ...and lunge forward
       if (t >= 1) this.swingT = -1;
     } else {
       const bob = player.moving ? Math.sin(performance.now() * 0.008) * 0.03 : 0;
       this.hatchet.rotation.x = HATCHET_REST_X + bob;
+      this.hatchet.rotation.y = 0;
       this.hatchet.rotation.z = HATCHET_REST_Z;
-      this.hatchet.position.x = HATCHET_REST_POS.x;
-      this.hatchet.position.y = HATCHET_REST_POS.y;
+      this.hatchet.position.copy(HATCHET_REST_POS);
     }
 
     // splatter physics: fly, land, stay
