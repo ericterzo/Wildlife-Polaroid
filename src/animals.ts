@@ -278,7 +278,7 @@ function fish(bodyColor: string, finColor: string, len = 0.55): AnimalRig {
 
 export const SPECIES: SpeciesDef[] = [
   {
-    id: 'rabbit', name: 'European Rabbit', habitats: ['field'], rarity: 1.0, fleeDist: 12, speed: 7, baseScale: 0.55, flies: false, swims: false,
+    id: 'rabbit', name: 'European Rabbit', habitats: ['field'], rarity: 1.0, fleeDist: 8, speed: 7, baseScale: 0.55, flies: false, swims: false,
     build: () => quadruped({
       body: [0.42, 0.4, 0.62], bodyY: 0.38, bodyColor: '#9a8468',
       head: [0.3, 0.3, 0.32], headFwd: 0.05, headUp: 0.22,
@@ -287,7 +287,7 @@ export const SPECIES: SpeciesDef[] = [
     }),
   },
   {
-    id: 'red_fox', name: 'Red Fox', habitats: ['forest', 'field'], rarity: 0.5, fleeDist: 20, speed: 9, baseScale: 0.8, flies: false, swims: false,
+    id: 'red_fox', name: 'Red Fox', habitats: ['forest', 'field'], rarity: 0.5, fleeDist: 13, speed: 9, baseScale: 0.8, flies: false, swims: false,
     build: () => quadruped({
       body: [0.42, 0.42, 0.95], bodyY: 0.52, bodyColor: '#c96a2e',
       head: [0.32, 0.3, 0.34], headFwd: 0.08, headUp: 0.25,
@@ -297,7 +297,7 @@ export const SPECIES: SpeciesDef[] = [
     }),
   },
   {
-    id: 'roe_deer', name: 'Roe Deer', habitats: ['field', 'forest'], rarity: 0.7, fleeDist: 26, speed: 11, baseScale: 1.15, flies: false, swims: false,
+    id: 'roe_deer', name: 'Roe Deer', habitats: ['field', 'forest'], rarity: 0.7, fleeDist: 24, speed: 11, baseScale: 1.15, flies: false, swims: false,
     build: () => quadruped({
       body: [0.5, 0.55, 1.1], bodyY: 0.85, bodyColor: '#b08a5e',
       head: [0.3, 0.34, 0.4], headFwd: 0.12, headUp: 0.55,
@@ -307,7 +307,7 @@ export const SPECIES: SpeciesDef[] = [
     }),
   },
   {
-    id: 'wild_boar', name: 'Wild Boar', habitats: ['forest'], rarity: 0.28, fleeDist: 16, speed: 8, baseScale: 1.0, flies: false, swims: false,
+    id: 'wild_boar', name: 'Wild Boar', habitats: ['forest'], rarity: 0.28, fleeDist: 10, speed: 8, baseScale: 1.0, flies: false, swims: false,
     build: () => quadruped({
       body: [0.58, 0.62, 1.2], bodyY: 0.62, bodyColor: '#4d4038',
       head: [0.42, 0.44, 0.44], headFwd: 0.05, headUp: 0.05,
@@ -317,7 +317,7 @@ export const SPECIES: SpeciesDef[] = [
     }),
   },
   {
-    id: 'pig', name: 'Domestic Pig', habitats: ['town', 'field'], rarity: 0.6, fleeDist: 8, speed: 5, baseScale: 0.9, flies: false, swims: false,
+    id: 'pig', name: 'Domestic Pig', habitats: ['town', 'field'], rarity: 0.6, fleeDist: 6, speed: 5, baseScale: 0.9, flies: false, swims: false,
     build: () => quadruped({
       body: [0.56, 0.56, 1.05], bodyY: 0.52, bodyColor: '#e8a8a0',
       head: [0.38, 0.38, 0.36], headFwd: 0.04, headUp: 0.04,
@@ -327,7 +327,7 @@ export const SPECIES: SpeciesDef[] = [
     }),
   },
   {
-    id: 'badger', name: 'European Badger', habitats: ['forest'], rarity: 0.22, fleeDist: 14, speed: 6, baseScale: 0.7, flies: false, swims: false,
+    id: 'badger', name: 'European Badger', habitats: ['forest'], rarity: 0.22, fleeDist: 9, speed: 6, baseScale: 0.7, flies: false, swims: false,
     build: () => quadruped({
       body: [0.5, 0.38, 0.85], bodyY: 0.32, bodyColor: '#77787c',
       head: [0.3, 0.26, 0.36], headColor: '#e8e6e0', headFwd: 0.04, headUp: 0.08,
@@ -337,7 +337,7 @@ export const SPECIES: SpeciesDef[] = [
     }),
   },
   {
-    id: 'red_squirrel', name: 'Red Squirrel', habitats: ['forest'], rarity: 0.85, fleeDist: 9, speed: 6, baseScale: 0.32, flies: false, swims: false,
+    id: 'red_squirrel', name: 'Red Squirrel', habitats: ['forest'], rarity: 0.85, fleeDist: 6, speed: 6, baseScale: 0.32, flies: false, swims: false,
     build: () => quadruped({
       body: [0.3, 0.32, 0.5], bodyY: 0.3, bodyColor: '#b3552e',
       head: [0.24, 0.24, 0.26], headFwd: 0.04, headUp: 0.2,
@@ -346,7 +346,7 @@ export const SPECIES: SpeciesDef[] = [
     }),
   },
   {
-    id: 'grey_squirrel', name: 'Grey Squirrel', habitats: ['forest', 'town'], rarity: 0.7, fleeDist: 8, speed: 6, baseScale: 0.34, flies: false, swims: false,
+    id: 'grey_squirrel', name: 'Grey Squirrel', habitats: ['forest', 'town'], rarity: 0.7, fleeDist: 5, speed: 6, baseScale: 0.34, flies: false, swims: false,
     build: () => quadruped({
       body: [0.3, 0.32, 0.5], bodyY: 0.3, bodyColor: '#8a8a90',
       head: [0.24, 0.24, 0.26], headFwd: 0.04, headUp: 0.2,
@@ -355,7 +355,7 @@ export const SPECIES: SpeciesDef[] = [
     }),
   },
   {
-    id: 'hedgehog', name: 'Hedgehog', habitats: ['field', 'forest'], rarity: 0.45, fleeDist: 5, speed: 1.6, baseScale: 0.35, flies: false, swims: false,
+    id: 'hedgehog', name: 'Hedgehog', habitats: ['field', 'forest'], rarity: 0.45, fleeDist: 4, speed: 1.6, baseScale: 0.35, flies: false, swims: false,
     build: () => quadruped({
       body: [0.42, 0.32, 0.5], bodyY: 0.2, bodyColor: '#6b5b48',
       head: [0.2, 0.18, 0.22], headColor: '#a5906f', headFwd: 0.03, headUp: -0.02,
@@ -363,7 +363,7 @@ export const SPECIES: SpeciesDef[] = [
     }),
   },
   {
-    id: 'sheep', name: 'Sheep', habitats: ['field', 'town'], rarity: 0.9, fleeDist: 9, speed: 5, baseScale: 0.95, flies: false, swims: false,
+    id: 'sheep', name: 'Sheep', habitats: ['field', 'town'], rarity: 0.9, fleeDist: 6, speed: 5, baseScale: 0.95, flies: false, swims: false,
     build: () => quadruped({
       body: [0.62, 0.6, 1.0], bodyY: 0.68, bodyColor: '#e9e4d5',
       head: [0.26, 0.3, 0.34], headColor: '#3a3230', headFwd: 0.08, headUp: 0.3,
@@ -373,7 +373,7 @@ export const SPECIES: SpeciesDef[] = [
     }),
   },
   {
-    id: 'cow', name: 'Cow', habitats: ['field'], rarity: 0.65, fleeDist: 7, speed: 4, baseScale: 1.5, flies: false, swims: false,
+    id: 'cow', name: 'Cow', habitats: ['field'], rarity: 0.65, fleeDist: 5, speed: 4, baseScale: 1.5, flies: false, swims: false,
     build: () => quadruped({
       body: [0.7, 0.72, 1.5], bodyY: 0.95, bodyColor: '#e9e4d5',
       head: [0.36, 0.4, 0.42], headColor: '#4d4038', headFwd: 0.1, headUp: 0.25,
@@ -383,7 +383,7 @@ export const SPECIES: SpeciesDef[] = [
     }),
   },
   {
-    id: 'horse', name: 'Horse', habitats: ['field'], rarity: 0.5, fleeDist: 12, speed: 12, baseScale: 1.6, flies: false, swims: false,
+    id: 'horse', name: 'Horse', habitats: ['field'], rarity: 0.5, fleeDist: 8, speed: 12, baseScale: 1.6, flies: false, swims: false,
     build: () => quadruped({
       body: [0.6, 0.7, 1.5], bodyY: 1.05, bodyColor: '#7a5230',
       head: [0.28, 0.42, 0.52], headFwd: 0.18, headUp: 0.62,
@@ -393,7 +393,7 @@ export const SPECIES: SpeciesDef[] = [
     }),
   },
   {
-    id: 'chicken', name: 'Chicken', habitats: ['town'], rarity: 1.0, fleeDist: 4, speed: 3.5, baseScale: 0.42, flies: false, swims: false,
+    id: 'chicken', name: 'Chicken', habitats: ['town'], rarity: 1.0, fleeDist: 3, speed: 3.5, baseScale: 0.42, flies: false, swims: false,
     build: () => bird({
       body: [0.4, 0.42, 0.55], bodyY: 0.42, bodyColor: '#ece7da',
       headSize: 0.2, neckLen: 0.12, beakLen: 0.12, legH: 0.24, tailUp: true,
@@ -437,7 +437,7 @@ export const SPECIES: SpeciesDef[] = [
     }),
   },
   {
-    id: 'mallard', name: 'Mallard Duck', habitats: ['water'], rarity: 0.9, fleeDist: 10, speed: 4, baseScale: 0.5, flies: true, swims: true,
+    id: 'mallard', name: 'Mallard Duck', habitats: ['water'], rarity: 0.9, fleeDist: 6, speed: 4, baseScale: 0.5, flies: true, swims: true,
     build: () => bird({
       body: [0.42, 0.36, 0.72], bodyY: 0.28, bodyColor: '#9a8468',
       headColor: '#2e6b3e', headSize: 0.22, neckLen: 0.1, beakLen: 0.18, beakColor: '#e0c23c',
@@ -445,7 +445,7 @@ export const SPECIES: SpeciesDef[] = [
     }),
   },
   {
-    id: 'mute_swan', name: 'Mute Swan', habitats: ['water'], rarity: 0.35, fleeDist: 14, speed: 5, baseScale: 0.95, flies: true, swims: true,
+    id: 'mute_swan', name: 'Mute Swan', habitats: ['water'], rarity: 0.35, fleeDist: 9, speed: 5, baseScale: 0.95, flies: true, swims: true,
     build: () => bird({
       body: [0.5, 0.42, 0.9], bodyY: 0.32, bodyColor: '#efeade',
       headSize: 0.18, neckLen: 0.48, neckColor: '#efeade', beakLen: 0.16, beakColor: '#d9762e',
@@ -461,7 +461,7 @@ export const SPECIES: SpeciesDef[] = [
     }),
   },
   {
-    id: 'kingfisher', name: 'Kingfisher', habitats: ['water'], rarity: 0.18, fleeDist: 12, speed: 8, baseScale: 0.28, flies: true, swims: false,
+    id: 'kingfisher', name: 'Kingfisher', habitats: ['water'], rarity: 0.18, fleeDist: 11, speed: 8, baseScale: 0.28, flies: true, swims: false,
     build: () => bird({
       body: [0.24, 0.26, 0.4], bodyY: 0.3, bodyColor: '#2e7fb5',
       headColor: '#2e7fb5', breastColor: '#d97f36', headSize: 0.15, neckLen: 0.02,
@@ -469,7 +469,7 @@ export const SPECIES: SpeciesDef[] = [
     }),
   },
   {
-    id: 'barn_owl', name: 'Barn Owl', habitats: ['forest'], rarity: 0.2, fleeDist: 15, speed: 7, baseScale: 0.5, flies: true, swims: false,
+    id: 'barn_owl', name: 'Barn Owl', habitats: ['forest'], rarity: 0.2, fleeDist: 10, speed: 7, baseScale: 0.5, flies: true, swims: false,
     build: () => bird({
       body: [0.34, 0.44, 0.42], bodyY: 0.4, bodyColor: '#d9c9a3',
       headColor: '#efe9dc', headSize: 0.26, neckLen: 0.02, beakLen: 0.08, beakColor: '#8a7355',
@@ -477,7 +477,7 @@ export const SPECIES: SpeciesDef[] = [
     }),
   },
   {
-    id: 'pheasant', name: 'Common Pheasant', habitats: ['field'], rarity: 0.55, fleeDist: 13, speed: 5, baseScale: 0.55, flies: true, swims: false,
+    id: 'pheasant', name: 'Common Pheasant', habitats: ['field'], rarity: 0.55, fleeDist: 8, speed: 5, baseScale: 0.55, flies: true, swims: false,
     build: () => bird({
       body: [0.34, 0.34, 0.62], bodyY: 0.36, bodyColor: '#a3562e',
       headColor: '#2e5b4e', headSize: 0.17, neckLen: 0.14, beakLen: 0.1,
@@ -485,7 +485,7 @@ export const SPECIES: SpeciesDef[] = [
     }),
   },
   {
-    id: 'blackbird', name: 'Blackbird', habitats: ['field', 'town', 'forest'], rarity: 0.9, fleeDist: 7, speed: 5, baseScale: 0.3, flies: true, swims: false,
+    id: 'blackbird', name: 'Blackbird', habitats: ['field', 'town', 'forest'], rarity: 0.9, fleeDist: 5, speed: 5, baseScale: 0.3, flies: true, swims: false,
     build: () => bird({
       body: [0.26, 0.26, 0.42], bodyY: 0.26, bodyColor: '#26262a',
       headSize: 0.14, neckLen: 0.04, beakLen: 0.1, beakColor: '#e0a83c',
@@ -493,7 +493,7 @@ export const SPECIES: SpeciesDef[] = [
     }),
   },
   {
-    id: 'robin', name: 'European Robin', habitats: ['forest', 'town'], rarity: 0.75, fleeDist: 6, speed: 5, baseScale: 0.22, flies: true, swims: false,
+    id: 'robin', name: 'European Robin', habitats: ['forest', 'town'], rarity: 0.75, fleeDist: 4, speed: 5, baseScale: 0.22, flies: true, swims: false,
     build: () => bird({
       body: [0.24, 0.24, 0.36], bodyY: 0.24, bodyColor: '#8a6f52',
       breastColor: '#d95c30', headSize: 0.14, neckLen: 0.02, beakLen: 0.07, beakColor: '#3a3230',
@@ -501,7 +501,7 @@ export const SPECIES: SpeciesDef[] = [
     }),
   },
   {
-    id: 'magpie', name: 'Magpie', habitats: ['field', 'town'], rarity: 0.6, fleeDist: 10, speed: 6, baseScale: 0.4, flies: true, swims: false,
+    id: 'magpie', name: 'Magpie', habitats: ['field', 'town'], rarity: 0.6, fleeDist: 7, speed: 6, baseScale: 0.4, flies: true, swims: false,
     build: () => bird({
       body: [0.28, 0.28, 0.5], bodyY: 0.28, bodyColor: '#efeade',
       headColor: '#26262a', breastColor: '#26262a', headSize: 0.15, neckLen: 0.04,
@@ -509,7 +509,7 @@ export const SPECIES: SpeciesDef[] = [
     }),
   },
   {
-    id: 'crow', name: 'Carrion Crow', habitats: ['field', 'forest'], rarity: 0.65, fleeDist: 12, speed: 6, baseScale: 0.42, flies: true, swims: false,
+    id: 'crow', name: 'Carrion Crow', habitats: ['field', 'forest'], rarity: 0.65, fleeDist: 9, speed: 6, baseScale: 0.42, flies: true, swims: false,
     build: () => bird({
       body: [0.3, 0.3, 0.52], bodyY: 0.3, bodyColor: '#1e1e24',
       headSize: 0.16, neckLen: 0.04, beakLen: 0.14, beakColor: '#2a2a2e',
@@ -517,7 +517,7 @@ export const SPECIES: SpeciesDef[] = [
     }),
   },
   {
-    id: 'villager', name: 'Villager', habitats: ['town'], rarity: 0.9, fleeDist: 3, speed: 3, baseScale: 1.0, flies: false, swims: false,
+    id: 'villager', name: 'Villager', habitats: ['town'], rarity: 0.9, fleeDist: 2, speed: 3, baseScale: 1.0, flies: false, swims: false,
     build: villager,
   },
   {
@@ -540,9 +540,9 @@ export interface SizeRoll {
   bonus: number; // photo score multiplier for extremity
 }
 
-/** No animal renders smaller than this, no matter the roll — a handful of
- *  pixels isn't a photo subject (or a spottable zombie). */
-export const MIN_VISUAL_SCALE = 0.27;
+/** No animal renders smaller than a regular crow, no matter the roll — a
+ *  handful of pixels isn't a photo subject (or a spottable zombie). */
+export const MIN_VISUAL_SCALE = 0.42;
 
 /**
  * Animals vary from teeny-tiny to way-larger-than-life on a bell curve —
@@ -618,6 +618,16 @@ export class Animal {
 
   get boundRadius(): number {
     return Math.max(0.55, 1.6 * this.scale);
+  }
+
+  /** Small specimens move slower, big ones faster. */
+  get speedScale(): number {
+    return THREE.MathUtils.clamp(0.35 + 0.6 * this.size.factor, 0.5, 1.5);
+  }
+
+  /** Unit vector this animal is facing (+Z forward, rotated by heading). */
+  get forward(): THREE.Vector3 {
+    return new THREE.Vector3(Math.sin(this.rig.group.rotation.y), 0, Math.cos(this.rig.group.rotation.y));
   }
 
   /** In the air right now? (bonus points for birds photographed in flight) */
@@ -754,7 +764,7 @@ export class Animal {
         break;
       }
       case 'flee': {
-        const speed = this.def.speed * (0.75 + 0.25 * Math.min(1.6, this.size.factor));
+        const speed = this.def.speed * this.speedScale;
         const nx = p.x + Math.sin(this.heading) * speed * dt;
         const nz = p.z + Math.cos(this.heading) * speed * dt;
         if (!this.terrainOk(nx, nz)) {
@@ -769,8 +779,9 @@ export class Animal {
         break;
       }
       case 'flyaway': {
-        p.x += Math.sin(this.heading) * this.def.speed * 1.6 * dt;
-        p.z += Math.cos(this.heading) * this.def.speed * 1.6 * dt;
+        const flySpeed = this.def.speed * 1.6 * this.speedScale;
+        p.x += Math.sin(this.heading) * flySpeed * dt;
+        p.z += Math.cos(this.heading) * flySpeed * dt;
         p.y += 3.2 * dt;
         this.rig.group.rotation.y = this.heading;
         this.rig.group.rotation.x = -0.35;
@@ -828,7 +839,7 @@ export class Animal {
       this.zombieStun -= dt;
     } else if (dist > 1.1 && dist < 90) {
       this.turnToward(Math.atan2(dx, dz), dt * 1.6);
-      const speed = this.def.speed * 0.45 * this.zombieSpeed;
+      const speed = this.def.speed * 0.45 * this.zombieSpeed * this.speedScale;
       const nx = p.x + Math.sin(this.heading) * speed * dt;
       const nz = p.z + Math.cos(this.heading) * speed * dt;
       const [cx, cz] = this.world.collide(nx, nz, 0.5 * this.scale);
@@ -860,7 +871,8 @@ export class Animal {
     this.heading += THREE.MathUtils.clamp(dh, -2.4 * dt, 2.4 * dt);
   }
 
-  private stepForward(speed: number, dt: number) {
+  private stepForward(baseSpeed: number, dt: number) {
+    const speed = baseSpeed * this.speedScale;
     const p = this.position;
     const nx = p.x + Math.sin(this.heading) * speed * dt;
     const nz = p.z + Math.cos(this.heading) * speed * dt;
@@ -985,17 +997,29 @@ export class AnimalSpawner {
     }
   }
 
-  /** A bird crossing the sky above the player — photo bonus if you catch it. */
+  /** Birds crossing the sky above the player — photo bonus if you catch them.
+   *  Rarely, a whole flock passes at once (combo heaven). */
   private spawnFlyover(playerPos: THREE.Vector3) {
-    const def = this.weightedPick(FLIER_SPECIES);
+    const flock = Math.random() < 0.18;
+    const def = flock
+      ? this.weightedPick(FLIER_SPECIES.filter((s) => s.baseScale <= 0.6)) // small birds flock
+      : this.weightedPick(FLIER_SPECIES);
     if (!def) return;
     const ang = Math.random() * Math.PI * 2;
     const x = playerPos.x + Math.cos(ang) * 55;
     const z = playerPos.z + Math.sin(ang) * 55;
-    const animal = this.spawn(def, x, z);
-    // aim it roughly over the player's head
     const heading = Math.atan2(playerPos.x - x, playerPos.z - z) + (Math.random() - 0.5) * 0.35;
-    animal.startFlyover(heading, playerPos.y + 9 + Math.random() * 9);
+    const altitude = playerPos.y + 9 + Math.random() * 9;
+    const count = flock ? 5 + Math.floor(Math.random() * 5) : 1;
+    // lateral offsets form a loose V (direction is (sin h, cos h); this is its perpendicular)
+    const px = Math.cos(heading);
+    const pz = -Math.sin(heading);
+    for (let i = 0; i < count; i++) {
+      const lateral = (i - (count - 1) / 2) * 2.6;
+      const back = Math.abs(lateral) * 0.7;
+      const animal = this.spawn(def, x + px * lateral - Math.sin(heading) * back, z + pz * lateral - Math.cos(heading) * back);
+      animal.startFlyover(heading, altitude + (Math.random() - 0.5) * 1.6);
+    }
   }
 
   private trySpawnFish(playerPos: THREE.Vector3) {

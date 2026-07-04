@@ -356,7 +356,7 @@ function takePhoto() {
   }
 
   const subject = shot.subject;
-  const points = computePoints(subject, shot.quality, shot.combo, shot.flying);
+  const points = computePoints(subject, shot.quality, shot.combo, shot.flying, shot.facing);
   const rec: PhotoRecord = {
     species: subject.def.id,
     order: 0,
@@ -367,6 +367,7 @@ function takePhoto() {
     day,
     combo: shot.combo,
     flying: shot.flying,
+    facing: shot.facing > 0.5,
     dataUrl: '',
   };
   const cap = captionFor(rec);
@@ -374,7 +375,8 @@ function takePhoto() {
 
   const tags: string[] = [];
   if (shot.combo > 1) tags.push(`×${shot.combo} combo!`);
-  if (shot.flying) tags.push('in flight!');
+  if (shot.flying) tags.push('in flight! ×5');
+  if (shot.facing > 0.5) tags.push('head-on!');
   const tagText = tags.length > 0 ? '  ' + tags.join(' ') : '';
 
   const existing = session.photos.find((p) => p.species === subject.def.id);

@@ -11,6 +11,7 @@ export interface PhotoRecord {
   day: number;
   combo?: number; // animals in frame (>= 2 means combo bonus was applied)
   flying?: boolean; // bird photographed in flight
+  facing?: boolean; // frontal portrait — the animal was looking at the camera
   dataUrl: string; // composited polaroid JPEG
 }
 
@@ -21,9 +22,12 @@ export interface ShotScore {
   quality: number; // 0..1 framing quality of the subject
   combo: number; // total animals in frame
   flying: boolean;
+  facing: number; // -1..1: how much the subject faces the camera
 }
 
-const MAX_PHOTO_DIST = 60;
+// Any animal you can see is a valid subject — the zoom lens is the whole
+// point. This only stops raycasts running off into the void past the fog.
+const MAX_PHOTO_DIST = 330;
 
 /** Rarer species are worth more per shot. */
 function rarityPoints(rarity: number): number {
@@ -56,11 +60,16 @@ export function scoreShot(camera: THREE.PerspectiveCamera, animals: Animal[], oc
     ndc.copy(focus).project(camera);
     if (ndc.z > 1 || Math.abs(ndc.x) > 0.92 || Math.abs(ndc.y) > 0.88) continue;
 
-    // occlusion: cast a ray at the subject; anything solid in front blocks it
-    const dir = focus.clone().sub(camera.position).normalize();
-    raycaster.set(camera.position, dir);
-    raycaster.far = dist - a.boundRadius;
-    if (raycaster.far > 0.1 && raycaster.intersectObjects(occluders, false).length > 0) continue;
+    // occlusion: try the body center first, then the top of the animal —
+    // if any part of it is visible, the shot counts
+    const blocked = (target: THREE.Vector3): boolean => {
+      const d = camera.position.distanceTo(target);
+      const dir = target.clone().sub(camera.position).normalize();
+      raycaster.set(camera.position, dir);
+      raycaster.far = d - a.boundRadius;
+      return raycaster.far > 0.1 && raycaster.intersectObjects(occluders, false).length > 0;
+    };
+    if (blocked(focus) && blocked(focus.clone().add(new THREE.Vector3(0, a.boundRadius, 0)))) continue;
 
     // occupancy: rough fraction of the frame height the animal fills
     // (zooming in raises it — the telephoto is how you "get closer" safely)
@@ -68,7 +77,7 @@ export function scoreShot(camera: THREE.PerspectiveCamera, animals: Animal[], oc
     hits.push({ animal: a, dist, offset: Math.hypot(ndc.x, ndc.y), occupancy });
   }
 
-  if (hits.length === 0) return { subject: null, extras: [], stars: 0, quality: 0, combo: 0, flying: false };
+  if (hits.length === 0) return { subject: null, extras: [], stars: 0, quality: 0, combo: 0, flying: false, facing: 0 };
 
   hits.sort((h1, h2) => h1.dist - h2.dist);
   const main = hits[0];
@@ -79,6 +88,10 @@ export function scoreShot(camera: THREE.PerspectiveCamera, animals: Animal[], oc
   if (quality >= 0.45) stars = 2;
   if (quality >= 0.75) stars = 3;
 
+  // frontal portrait bonus: is the subject looking toward the camera?
+  const toCamera = camera.position.clone().sub(main.animal.position).setY(0).normalize();
+  const facing = main.animal.forward.dot(toCamera);
+
   return {
     subject: main.animal,
     extras: hits.slice(1).map((h) => h.animal),
@@ -86,6 +99,7 @@ export function scoreShot(camera: THREE.PerspectiveCamera, animals: Animal[], oc
     quality,
     combo: hits.length,
     flying: main.animal.flying,
+    facing,
   };
 }
 
@@ -101,13 +115,14 @@ function framingQuality(a: Animal, offset: number, occupancy: number): number {
   return occWeight * occ01 + (1 - occWeight) * center01;
 }
 
-export function computePoints(subject: Animal, quality: number, combo: number, flying: boolean): number {
+export function computePoints(subject: Animal, quality: number, combo: number, flying: boolean, facing = 0): number {
   const size = describeSize(subject.size.factor);
   const base = rarityPoints(subject.def.rarity) * size.bonus;
   const framing = 0.35 + 2.4 * Math.pow(quality, 1.25); // bad framing ~0.4x, perfect ~2.75x
   const comboMult = 1 + 0.4 * Math.min(4, Math.max(0, combo - 1)); // +40% per extra animal, cap +160%
-  const flyMult = flying ? 1.5 : 1;
-  return Math.max(1, Math.round(base * framing * comboMult * flyMult));
+  const flyMult = flying ? 5 : 1; // birds on the wing are the jackpot
+  const faceMult = 1 + 0.45 * Math.max(0, facing); // head-on portrait beats a butt shot
+  return Math.max(1, Math.round(base * framing * comboMult * flyMult * faceMult));
 }
 
 /**
@@ -167,6 +182,7 @@ export function captionFor(record: PhotoRecord): { main: string; sub: string } {
   const stars = '★'.repeat(record.stars) + '☆'.repeat(3 - record.stars);
   const tags: string[] = [];
   if (record.flying) tags.push('in flight!');
+  if (record.facing) tags.push('head-on');
   if ((record.combo ?? 1) > 1) tags.push(`×${record.combo} combo`);
   const tail = tags.length > 0 ? ' · ' + tags.join(' · ') : '';
   return { main, sub: `${stars} · Day ${record.day} · ${record.points} pts${tail}` };

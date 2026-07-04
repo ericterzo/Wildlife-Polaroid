@@ -551,6 +551,30 @@ body.zombie-mode #hint {
   display: none;
 }
 
+#kill-feed {
+  position: absolute;
+  top: 64px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #ffd6c9;
+  background: rgba(60, 14, 10, 0.78);
+  border: 1px solid rgba(224, 60, 40, 0.45);
+  padding: 7px 18px;
+  border-radius: 8px;
+  font-size: 16px;
+  white-space: nowrap;
+  opacity: 0;
+}
+#kill-feed.go {
+  animation: killfeed-anim 2.4s ease forwards;
+}
+@keyframes killfeed-anim {
+  0% { opacity: 0; transform: translate(-50%, -6px); }
+  10% { opacity: 1; transform: translate(-50%, 0); }
+  75% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
 #hurt {
   position: absolute;
   inset: 0;

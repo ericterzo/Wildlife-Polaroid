@@ -110,7 +110,7 @@ export class ZombieMode {
   /** Swing the hatchet. Returns true if the swing happened. */
   trySwing(spawner: AnimalSpawner, player: Player): boolean {
     if (!this.active || this.dead || this.swingCooldown > 0) return false;
-    this.swingCooldown = 0.45;
+    this.swingCooldown = 0.28;
     this.swingT = 0;
     this.sfx.swing();
     const fwd = new THREE.Vector3();
@@ -126,6 +126,7 @@ export class ZombieMode {
       this.kills++;
       this.sfx.squish();
       this.burstSplatter(a.position, a.scale);
+      announceKill(a);
     }
     return true;
   }
@@ -171,18 +172,22 @@ export class ZombieMode {
       }
     }
 
-    // hatchet idle bob + swing animation
+    // hatchet idle bob + swing animation: chops in toward the screen center
     if (this.swingT >= 0) {
       this.swingT += dt;
-      const t = Math.min(1, this.swingT / 0.3);
+      const t = Math.min(1, this.swingT / 0.24);
       const arc = Math.sin(t * Math.PI); // out and back
       this.hatchet.rotation.x = HATCHET_REST_X - arc * 1.5;
-      this.hatchet.rotation.z = HATCHET_REST_Z - arc * 0.5;
+      this.hatchet.rotation.z = HATCHET_REST_Z - arc * 0.9;
+      this.hatchet.position.x = HATCHET_REST_POS.x - arc * 0.3; // sweep to center
+      this.hatchet.position.y = HATCHET_REST_POS.y + arc * 0.06;
       if (t >= 1) this.swingT = -1;
     } else {
       const bob = player.moving ? Math.sin(performance.now() * 0.008) * 0.03 : 0;
       this.hatchet.rotation.x = HATCHET_REST_X + bob;
       this.hatchet.rotation.z = HATCHET_REST_Z;
+      this.hatchet.position.x = HATCHET_REST_POS.x;
+      this.hatchet.position.y = HATCHET_REST_POS.y;
     }
 
     // splatter physics: fly, land, stay
@@ -233,6 +238,18 @@ export class ZombieMode {
 
 const HATCHET_REST_X = -0.55;
 const HATCHET_REST_Z = 0.14;
+const HATCHET_REST_POS = new THREE.Vector3(0.36, -0.4, -0.72);
+
+/** "You just killed a MASSIVE zombie Farm Dog" — top-of-screen kill feed. */
+function announceKill(a: Animal) {
+  const el = document.getElementById('kill-feed');
+  if (!el) return;
+  const size = a.size.label ? `${a.size.label === 'MASSIVE' ? 'MASSIVE' : a.size.label.toLowerCase()} ` : '';
+  el.textContent = `You just killed a ${size}zombie ${a.def.name}!`;
+  el.classList.remove('go');
+  void el.offsetWidth;
+  el.classList.add('go');
+}
 
 function buildHatchet(): THREE.Group {
   // Built upright in local space (handle along +Y, blade facing -Z),
@@ -256,7 +273,7 @@ function buildHatchet(): THREE.Group {
   edge.position.set(0, 0.3, -0.24);
   g.add(edge);
   g.scale.setScalar(0.8);
-  g.position.set(0.36, -0.4, -0.72);
+  g.position.copy(HATCHET_REST_POS);
   g.rotation.set(HATCHET_REST_X, 0, HATCHET_REST_Z);
   return g;
 }
