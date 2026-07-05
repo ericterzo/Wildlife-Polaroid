@@ -45,6 +45,65 @@ interface Splatter {
   resting: boolean;
 }
 
+/**
+ * Shared red-splatter particle system: zombie hatchet kills and T. rex
+ * lunch breaks both burst through here. Particles fly, land, and remain
+ * as stains on the ground.
+ */
+export class GoreSystem {
+  private splatters: Splatter[] = [];
+
+  constructor(private scene: THREE.Scene) {}
+
+  burst(at: THREE.Vector3, scale: number) {
+    const n = 12 + Math.floor(Math.random() * 6);
+    for (let i = 0; i < n; i++) {
+      const mesh = new THREE.Mesh(splatterGeo, splatterMats[i % splatterMats.length]);
+      mesh.position.copy(at);
+      mesh.position.y += 0.4 * scale;
+      mesh.scale.setScalar(0.7 + Math.random() * Math.min(2, scale));
+      const ang = Math.random() * Math.PI * 2;
+      const sp = 1.5 + Math.random() * 3;
+      this.splatters.push({
+        mesh,
+        vel: new THREE.Vector3(Math.cos(ang) * sp, 2 + Math.random() * 3.5, Math.sin(ang) * sp),
+        resting: false,
+      });
+      this.scene.add(mesh);
+    }
+  }
+
+  update(dt: number, world: World) {
+    for (const s of this.splatters) {
+      if (s.resting) continue;
+      s.vel.y -= 14 * dt;
+      s.mesh.position.addScaledVector(s.vel, dt);
+      const ground = world.heightAt(s.mesh.position.x, s.mesh.position.z) + 0.04;
+      if (s.mesh.position.y <= ground) {
+        s.mesh.position.y = ground;
+        s.mesh.scale.set(1.6, 0.3, 1.6); // flatten into a stain
+        s.resting = true;
+      }
+    }
+    const resting = this.splatters.filter((s) => s.resting);
+    while (resting.length > MAX_REST_SPLATTER) {
+      const oldest = resting.shift()!;
+      this.scene.remove(oldest.mesh);
+      const ix = this.splatters.indexOf(oldest);
+      if (ix >= 0) this.splatters.splice(ix, 1);
+    }
+  }
+
+  get count(): number {
+    return this.splatters.length;
+  }
+
+  clear() {
+    for (const s of this.splatters) this.scene.remove(s.mesh);
+    this.splatters.length = 0;
+  }
+}
+
 export class ZombieMode {
   active = false;
   lives = MAX_LIVES;
@@ -55,11 +114,11 @@ export class ZombieMode {
   private swingCooldown = 0;
   private swingT = -1; // >= 0 while the hatchet swing animates
   private hatchet: THREE.Group;
-  private splatters: Splatter[] = [];
 
   constructor(
     private scene: THREE.Scene,
     private camera: THREE.PerspectiveCamera,
+    private gore: GoreSystem,
     private sfx: ZombieSfx,
     private onDeath: () => void
   ) {
@@ -102,8 +161,7 @@ export class ZombieMode {
     for (const a of spawner.animals) a.alive = false; // clear the horde
     this.camera.remove(this.hatchet);
     this.scene.remove(this.camera);
-    for (const s of this.splatters) this.scene.remove(s.mesh);
-    this.splatters.length = 0;
+    this.gore.clear(); // the dream fades, the stains fade with it
     document.body.classList.remove('zombie-mode');
   }
 
@@ -125,7 +183,7 @@ export class ZombieMode {
       a.alive = false;
       this.kills++;
       this.sfx.squish();
-      this.burstSplatter(a.position, a.scale);
+      this.gore.burst(a.position, a.scale);
       announceKill(a);
     }
     return true;
@@ -193,44 +251,7 @@ export class ZombieMode {
       this.hatchet.position.copy(HATCHET_REST_POS);
     }
 
-    // splatter physics: fly, land, stay
-    for (let i = this.splatters.length - 1; i >= 0; i--) {
-      const s = this.splatters[i];
-      if (s.resting) continue;
-      s.vel.y -= 14 * dt;
-      s.mesh.position.addScaledVector(s.vel, dt);
-      const ground = world.heightAt(s.mesh.position.x, s.mesh.position.z) + 0.04;
-      if (s.mesh.position.y <= ground) {
-        s.mesh.position.y = ground;
-        s.mesh.scale.set(1.6, 0.3, 1.6); // flatten into a stain
-        s.resting = true;
-      }
-    }
-    const resting = this.splatters.filter((s) => s.resting);
-    while (resting.length > MAX_REST_SPLATTER) {
-      const oldest = resting.shift()!;
-      this.scene.remove(oldest.mesh);
-      const ix = this.splatters.indexOf(oldest);
-      if (ix >= 0) this.splatters.splice(ix, 1);
-    }
-  }
-
-  private burstSplatter(at: THREE.Vector3, scale: number) {
-    const n = 12 + Math.floor(Math.random() * 6);
-    for (let i = 0; i < n; i++) {
-      const mesh = new THREE.Mesh(splatterGeo, splatterMats[i % splatterMats.length]);
-      mesh.position.copy(at);
-      mesh.position.y += 0.4 * scale;
-      mesh.scale.setScalar(0.7 + Math.random() * Math.min(2, scale));
-      const ang = Math.random() * Math.PI * 2;
-      const sp = 1.5 + Math.random() * 3;
-      this.splatters.push({
-        mesh,
-        vel: new THREE.Vector3(Math.cos(ang) * sp, 2 + Math.random() * 3.5, Math.sin(ang) * sp),
-        resting: false,
-      });
-      this.scene.add(mesh);
-    }
+    // (splatter physics now lives in the shared GoreSystem — main ticks it)
   }
 
   hudText(): string {
