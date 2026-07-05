@@ -7,7 +7,8 @@ export interface SpeciesDef {
   id: string;
   name: string;
   habitats: Habitat[];
-  rarity: number; // spawn weight, higher = more common
+  rarity: number; // spawn weight, higher = more common; also the photo-value knob
+  spawnWeight?: number; // overrides rarity for spawn frequency only (keeps photo value intact)
   fleeDist: number; // meters at which it spooks (walking player)
   speed: number; // flee speed m/s
   baseScale: number;
@@ -374,18 +375,57 @@ function parasaurolophus(): AnimalRig {
 }
 
 function diplodocus(): AnimalRig {
-  const rig = quadruped({
-    body: [1.8, 1.9, 5.5], bodyY: 2.6, bodyColor: '#8a9070',
-    head: [0.55, 0.5, 0.9], headFwd: 0.4, headUp: 3.2, // head office is upstairs
-    legH: 1.9, legW: 0.6,
-    tail: { size: [0.7, 0.7, 5.0], up: 0.3 },
-  });
-  // stretch a proper neck up to that distant head
-  const neck = box(0.55, 3.6, 0.7, '#8a9070');
-  neck.position.set(0, -1.7, -0.4);
-  neck.rotation.x = 0.25;
-  rig.head.add(neck);
-  return rig;
+  // Built by hand because that glorious neck has to hinge at the SHOULDERS,
+  // not up at the head — otherwise it detaches and moonwalks away when it bobs.
+  const g = new THREE.Group();
+  const color = '#8a9070';
+  const bodyY = 2.6;
+  const [bw, bh, bd] = [1.8, 1.9, 5.5];
+  const body = box(bw, bh, bd, color);
+  body.position.y = bodyY;
+  g.add(body);
+
+  // the neck pivot lives right at the front of the body; neck + head ride on it
+  const neckBase = new THREE.Group();
+  neckBase.position.set(0, bodyY + bh * 0.35, bd / 2 - 0.3);
+  const neck = box(0.62, 3.9, 0.72, color);
+  neck.position.set(0, 1.7, 0.55); // rises up and leans forward from the pivot
+  neck.rotation.x = 0.3;
+  neckBase.add(neck);
+  const skull = box(0.55, 0.5, 1.15, color);
+  skull.position.set(0, 3.35, 1.5); // perched at the tip of that long neck
+  skull.rotation.x = 0.12;
+  neckBase.add(skull);
+  g.add(neckBase);
+
+  // four sturdy pillar legs
+  const legs: THREE.Object3D[] = [];
+  const legH = 1.9;
+  const legW = 0.6;
+  for (const fz of [-1, 1]) {
+    for (const fx of [-1, 1]) {
+      const pivot = new THREE.Group();
+      pivot.position.set(fx * (bw / 2 - legW * 0.6), bodyY - bh / 2 + 0.02, fz * (bd / 2 - legW));
+      const leg = box(legW, legH, legW, color);
+      leg.position.y = -legH / 2;
+      pivot.add(leg);
+      g.add(pivot);
+      legs.push(pivot);
+    }
+  }
+
+  // and the equally famous whip of a tail
+  const tail = new THREE.Group();
+  tail.position.set(0, bodyY + 0.3, -bd / 2);
+  const tailMesh = box(0.7, 0.7, 5.0, color);
+  tailMesh.position.set(0, 0, -2.5);
+  tail.add(tailMesh);
+  const tailTip = box(0.3, 0.3, 2.0, color);
+  tailTip.position.set(0, -0.1, -6.0);
+  tail.add(tailTip);
+  g.add(tail);
+
+  return { group: g, legs, head: neckBase, tail, bodyHeight: bodyY };
 }
 
 function stegosaurus(): AnimalRig {
@@ -763,7 +803,7 @@ export const SPECIES: SpeciesDef[] = [
   },
   // ---- the Late Cretaceous wing of the photo book ----
   {
-    id: 'trex', name: 'Tyrannosaurus Rex', habitats: ['field', 'forest'], rarity: 0.08, fleeDist: 0, speed: 7, baseScale: 1.0, flies: false, swims: false, dino: true,
+    id: 'trex', name: 'Tyrannosaurus Rex', habitats: ['field', 'forest'], rarity: 0.08, spawnWeight: 0.18, fleeDist: 0, speed: 7, baseScale: 1.0, flies: false, swims: false, dino: true,
     build: trex,
   },
   {
@@ -1415,11 +1455,12 @@ export class AnimalSpawner {
 
   private weightedPick(pool: SpeciesDef[]): SpeciesDef | null {
     if (pool.length === 0) return null;
+    const weight = (s: SpeciesDef) => s.spawnWeight ?? s.rarity;
     let totalW = 0;
-    for (const s of pool) totalW += s.rarity;
+    for (const s of pool) totalW += weight(s);
     let pick = Math.random() * totalW;
     for (const s of pool) {
-      pick -= s.rarity;
+      pick -= weight(s);
       if (pick <= 0) return s;
     }
     return pool[pool.length - 1];
