@@ -1333,15 +1333,20 @@ export class AnimalSpawner {
       if (rex.huntTarget) continue; // already mid-chase
       rex.trexTimer -= dt;
       if (rex.trexTimer > 0) continue;
-      // closest snack within range (other dinos are too much paperwork)
+      // anything on legs is on the menu, dinosaurs included — and the king
+      // always orders the LARGEST thing in sight (actual physical size,
+      // so a "small" stegosaurus still outranks a giant rabbit)
       let best: Animal | null = null;
-      let bestD = 45;
+      let bestBulk = 0;
+      const SIGHT = 60;
       for (const prey of this.animals) {
-        if (prey === rex || !prey.alive || prey.def.dino || prey.def.aquatic || prey.flying) continue;
+        if (prey === rex || !prey.alive || prey.def.aquatic || prey.flying) continue;
         const d = Math.hypot(prey.position.x - rex.position.x, prey.position.z - rex.position.z);
-        if (d < bestD) {
-          bestD = d;
+        if (d > SIGHT) continue;
+        const bulk = prey.scale * prey.rig.bodyHeight; // rough shoulder height in meters
+        if (!best || bulk > bestBulk) {
           best = prey;
+          bestBulk = bulk;
         }
       }
       if (best) {
