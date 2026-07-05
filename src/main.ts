@@ -7,7 +7,7 @@ import { SaveData, downloadSave, parseSaveZip, buildSaveZip, autosave, loadAutos
 import { UI } from './ui';
 import { AmbientMusic } from './music';
 import { generatePortraits } from './gallery';
-import { ZombieMode } from './zombie';
+import { ZombieMode, GoreSystem } from './zombie';
 
 type GameState = 'title' | 'playing' | 'book' | 'paused' | 'gameover';
 
@@ -218,10 +218,12 @@ const DEVELOP_TIME = 2.6; // seconds a photo takes to develop
 let easyMode = false;
 
 const music = new AmbientMusic();
+const gore = new GoreSystem(scene); // shared by zombie hatchets and T. rex teeth
 
 const zombie = new ZombieMode(
   scene,
   camera,
+  gore,
   { swing: swingSound, squish: squishSound, hurt: hurtSound, death: deathSound },
   () => {
     // the horde got you
@@ -326,6 +328,9 @@ function beginTrip(data: SaveData, isNew: boolean) {
       elapsed: data.elapsed ?? 0,
     };
     session.spawner.easy = easyMode;
+    session.spawner.gore = gore;
+    session.spawner.photographed = new Set(session.photos.map((p) => p.species));
+    gore.clear(); // fresh world, clean grass
     state = 'playing';
     ui.showPlaying();
     updateScore();
@@ -387,6 +392,7 @@ function takePhoto() {
   if (!existing) {
     rec.order = session.photos.length + 1;
     session.photos.push(rec);
+    session.spawner.photographed.add(subject.def.id); // discovery pacing bookkeeping
     newSpeciesSound();
     ui.toast(`NEW — ${cap.main}!  ${'★'.repeat(shot.stars)}${tagText}  +${points} pts`);
   } else if (points > existing.points) {
@@ -716,7 +722,9 @@ function tick() {
     session.player.update(dt);
     const depth = session.player.waterDepth;
     // zombies are drawn to noise regardless; noiseFactor only matters in normal mode
+    session.spawner.elapsed = session.elapsed;
     session.spawner.update(dt, session.player.position, session.player.noiseFactor, depth);
+    gore.update(dt, session.world);
     if (zombie.active) {
       zombie.update(dt, session.spawner, session.player, session.world);
       const hud = document.getElementById('zombie-hud')!;
@@ -771,6 +779,9 @@ ui.showTitle(loadAutosave() !== null);
   },
   get music() {
     return music;
+  },
+  get gore() {
+    return gore;
   },
   swing: shootOrSwing,
   takePhoto,

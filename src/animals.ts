@@ -15,6 +15,7 @@ export interface SpeciesDef {
   swims: boolean; // lives on the water surface
   aquatic?: boolean; // underwater — only appears while the player is wading
   temperament?: 'friendly' | 'shy'; // friendly ones come to you; default = shy
+  dino?: boolean; // 65 million years late, still showed up for the photo
   build: () => AnimalRig;
 }
 
@@ -254,6 +255,228 @@ function villager(): AnimalRig {
   return { group: g, legs, head, tail: null, bodyHeight: 1.3 };
 }
 
+// -- dinosaur builders (built at rough real-world meters; rolls only go UP) --
+
+/** Two mighty legs, two adorable arms: the classic theropod chassis. */
+function biped(o: {
+  body: [number, number, number];
+  bodyY: number;
+  color: string;
+  belly?: string;
+  head: [number, number, number];
+  headUp: number;
+  headFwd: number;
+  neckLen?: number;
+  teeth?: boolean;
+  domeHead?: boolean;
+  crest?: number; // parasaurolophus tube, in meters of swagger
+  legH: number;
+  legW: number;
+  armLen: number;
+  tail: [number, number, number];
+}): AnimalRig {
+  const g = new THREE.Group();
+  const [bw, bh, bd] = o.body;
+  const body = box(bw, bh, bd, o.color);
+  body.position.y = o.bodyY;
+  body.rotation.x = -0.18; // chest up, tail down — proper theropod posture
+  g.add(body);
+  if (o.belly) {
+    const belly = box(bw * 0.8, bh * 0.5, bd * 0.7, o.belly);
+    belly.position.set(0, o.bodyY - bh * 0.3, bd * 0.05);
+    g.add(belly);
+  }
+
+  const head = new THREE.Group();
+  head.position.set(0, o.bodyY + o.headUp, bd / 2 + o.headFwd);
+  const neck = box(bw * 0.45, o.neckLen ?? bh * 0.6, bw * 0.5, o.color);
+  neck.position.set(0, -(o.neckLen ?? bh * 0.6) * 0.35, -0.1);
+  head.add(neck);
+  const [hw, hh, hd] = o.head;
+  const skull = box(hw, hh, hd, o.color);
+  skull.position.set(0, hh * 0.25, hd * 0.3);
+  head.add(skull);
+  if (o.teeth) {
+    for (const side of [-1, 1]) {
+      const fangs = box(hw * 0.12, hh * 0.28, hd * 0.7, '#efe9dc');
+      fangs.position.set(side * hw * 0.38, -hh * 0.12, hd * 0.35);
+      head.add(fangs);
+    }
+  }
+  if (o.domeHead) {
+    const dome = box(hw * 0.85, hh * 0.7, hd * 0.6, '#8a7a5e');
+    dome.position.set(0, hh * 0.65, hd * 0.1);
+    head.add(dome);
+  }
+  if (o.crest) {
+    const crest = box(hw * 0.3, hw * 0.3, o.crest, o.color);
+    crest.position.set(0, hh * 0.55, -o.crest * 0.35);
+    crest.rotation.x = -0.5; // sweeps back like a hood ornament
+    head.add(crest);
+  }
+  g.add(head);
+
+  const legs: THREE.Object3D[] = [];
+  const addLimb = (x: number, y: number, z: number, w: number, len: number) => {
+    const pivot = new THREE.Group();
+    pivot.position.set(x, y, z);
+    const limb = box(w, len, w, o.color);
+    limb.position.y = -len / 2;
+    pivot.add(limb);
+    g.add(pivot);
+    legs.push(pivot);
+  };
+  addLimb(-bw * 0.38, o.bodyY - bh * 0.3, 0, o.legW, o.legH); // left leg
+  addLimb(bw * 0.38, o.bodyY - bh * 0.3, 0, o.legW, o.legH); // right leg
+  addLimb(bw * 0.45, o.bodyY + bh * 0.15, bd * 0.32, o.legW * 0.35, o.armLen); // rrright arm
+  addLimb(-bw * 0.45, o.bodyY + bh * 0.15, bd * 0.32, o.legW * 0.35, o.armLen); // left arm
+
+  const tail = new THREE.Group();
+  tail.position.set(0, o.bodyY + bh * 0.05, -bd / 2);
+  const [tw, th, td] = o.tail;
+  const tailMesh = box(tw, th, td, o.color);
+  tailMesh.position.set(0, -th * 0.15, -td / 2);
+  tailMesh.rotation.x = 0.12;
+  tail.add(tailMesh);
+  const tailTip = box(tw * 0.5, th * 0.5, td * 0.6, o.color);
+  tailTip.position.set(0, -th * 0.2, -td - td * 0.25);
+  tail.add(tailTip);
+  g.add(tail);
+
+  return { group: g, legs, head, tail, bodyHeight: o.bodyY };
+}
+
+function trex(): AnimalRig {
+  return biped({
+    body: [1.4, 1.6, 3.2], bodyY: 2.4, color: '#6b7248', belly: '#a89c74',
+    head: [0.9, 1.0, 1.5], headUp: 1.5, headFwd: 0.5, neckLen: 1.0, teeth: true,
+    legH: 2.0, legW: 0.55, armLen: 0.7, // those arms never skip leg day, because there is only leg day
+    tail: [0.8, 0.9, 3.4],
+  });
+}
+
+function pachycephalosaurus(): AnimalRig {
+  return biped({
+    body: [0.9, 1.1, 2.2], bodyY: 1.6, color: '#8a6a52', belly: '#bfa77e',
+    head: [0.5, 0.6, 0.8], headUp: 1.0, headFwd: 0.3, neckLen: 0.7, domeHead: true,
+    legH: 1.3, legW: 0.35, armLen: 0.6,
+    tail: [0.5, 0.6, 2.2],
+  });
+}
+
+function parasaurolophus(): AnimalRig {
+  return biped({
+    body: [1.1, 1.3, 2.8], bodyY: 1.9, color: '#7a8a5a', belly: '#c2b98a',
+    head: [0.5, 0.7, 1.0], headUp: 1.3, headFwd: 0.4, neckLen: 0.9, crest: 1.4,
+    legH: 1.6, legW: 0.45, armLen: 0.9,
+    tail: [0.6, 0.8, 2.8],
+  });
+}
+
+function diplodocus(): AnimalRig {
+  const rig = quadruped({
+    body: [1.8, 1.9, 5.5], bodyY: 2.6, bodyColor: '#8a9070',
+    head: [0.55, 0.5, 0.9], headFwd: 0.4, headUp: 3.2, // head office is upstairs
+    legH: 1.9, legW: 0.6,
+    tail: { size: [0.7, 0.7, 5.0], up: 0.3 },
+  });
+  // stretch a proper neck up to that distant head
+  const neck = box(0.55, 3.6, 0.7, '#8a9070');
+  neck.position.set(0, -1.7, -0.4);
+  neck.rotation.x = 0.25;
+  rig.head.add(neck);
+  return rig;
+}
+
+function stegosaurus(): AnimalRig {
+  const rig = quadruped({
+    body: [1.6, 1.8, 4.2], bodyY: 1.8, bodyColor: '#7a6a4a',
+    head: [0.5, 0.5, 0.8], headFwd: 0.4, headUp: -0.4, // head low, hips high — fashion icon
+    legH: 1.2, legW: 0.5,
+    tail: { size: [0.6, 0.7, 2.8], up: 0.4 },
+  });
+  // the famous back plates, two staggered rows
+  for (let i = 0; i < 5; i++) {
+    for (const side of [-0.18, 0.18]) {
+      const plate = box(0.15, 1.0 + Math.sin((i / 4) * Math.PI) * 0.5, 0.8, '#a5543a');
+      plate.position.set(side, 2.7 + Math.sin((i / 4) * Math.PI) * 0.5, 1.6 - i * 0.95 + (side > 0 ? -0.4 : 0));
+      plate.rotation.z = side * 0.1;
+      rig.group.add(plate);
+    }
+  }
+  // thagomizer (tail spikes)
+  if (rig.tail) {
+    for (const side of [-1, 1]) {
+      const spike = box(0.12, 0.7, 0.12, '#e8e2d4');
+      spike.position.set(side * 0.3, 0.4, -2.6);
+      spike.rotation.z = side * 0.5;
+      rig.tail.add(spike);
+    }
+  }
+  return rig;
+}
+
+function triceratops(): AnimalRig {
+  const rig = quadruped({
+    body: [1.7, 1.7, 4.0], bodyY: 1.7, bodyColor: '#8a7a5e',
+    head: [1.0, 0.9, 1.2], headFwd: 0.5, headUp: 0.3,
+    snout: [0.5, 0.5, 0.6, '#a89c74'],
+    legH: 1.2, legW: 0.55,
+    tail: { size: [0.5, 0.6, 2.0] },
+  });
+  // the frill: a big bony billboard
+  const frill = box(1.8, 1.6, 0.25, '#9a8768');
+  frill.position.set(0, 0.9, -0.3);
+  frill.rotation.x = -0.25;
+  rig.head.add(frill);
+  // two brow horns + one nose horn
+  for (const side of [-1, 1]) {
+    const horn = box(0.15, 0.15, 1.1, '#efe9dc');
+    horn.position.set(side * 0.4, 0.6, 0.9);
+    horn.rotation.x = -0.35;
+    rig.head.add(horn);
+  }
+  const noseHorn = box(0.15, 0.5, 0.15, '#efe9dc');
+  noseHorn.position.set(0, 0.35, 1.15);
+  rig.head.add(noseHorn);
+  return rig;
+}
+
+/** The pteranodon soars — wings out, legs optional, drama mandatory. */
+function pteranodon(): AnimalRig {
+  const g = new THREE.Group();
+  const body = box(0.5, 0.5, 1.6, '#a5764a');
+  body.position.y = 0.3;
+  g.add(body);
+  const head = new THREE.Group();
+  head.position.set(0, 0.5, 0.9);
+  const skull = box(0.35, 0.35, 0.7, '#a5764a');
+  head.add(skull);
+  const beak = box(0.18, 0.15, 1.1, '#c9973c');
+  beak.position.set(0, -0.05, 0.8);
+  head.add(beak);
+  const crest = box(0.14, 0.2, 0.9, '#8a5c38');
+  crest.position.set(0, 0.25, -0.45);
+  crest.rotation.x = 0.35;
+  head.add(crest);
+  g.add(head);
+  const wings: THREE.Object3D[] = [];
+  for (const side of [-1, 1]) {
+    const pivot = new THREE.Group();
+    pivot.position.set(side * 0.25, 0.45, 0.1);
+    const wing = box(2.8, 0.08, 1.0, '#b98a5e');
+    wing.position.x = side * 1.4;
+    pivot.add(wing);
+    const tip = box(1.2, 0.06, 0.6, '#b98a5e');
+    tip.position.set(side * 3.2, 0, -0.15);
+    tip.rotation.z = side * 0.1;
+    pivot.add(tip);
+    g.add(pivot);
+    wings.push(pivot); // stored as "legs" so the walk-cycle code flaps them
+  }
+  return { group: g, legs: wings, head, tail: null, bodyHeight: 0.4 };
+}
+
 /** Underwater fish — appears while the player wades. */
 function fish(bodyColor: string, finColor: string, len = 0.55): AnimalRig {
   const g = new THREE.Group();
@@ -297,13 +520,23 @@ export const SPECIES: SpeciesDef[] = [
     }),
   },
   {
-    id: 'roe_deer', name: 'Roe Deer', habitats: ['field', 'forest'], rarity: 0.7, fleeDist: 24, speed: 11, baseScale: 1.15, flies: false, swims: false,
+    id: 'roe_deer', name: 'Roe Deer Buck', habitats: ['field', 'forest'], rarity: 0.45, fleeDist: 24, speed: 11, baseScale: 1.15, flies: false, swims: false,
     build: () => quadruped({
       body: [0.5, 0.55, 1.1], bodyY: 0.85, bodyColor: '#b08a5e',
       head: [0.3, 0.34, 0.4], headFwd: 0.12, headUp: 0.55,
       snout: [0.14, 0.13, 0.18, '#4a3a2c'], ears: [0.1, 0.22, 0.12],
-      legH: 0.72, legW: 0.09, antlers: true,
+      legH: 0.72, legW: 0.09, antlers: true, // the gentleman wears his crown
       tail: { size: [0.16, 0.18, 0.1], color: '#e8e2d4' },
+    }),
+  },
+  {
+    id: 'roe_deer_doe', name: 'Roe Deer Doe', habitats: ['field', 'forest'], rarity: 0.6, fleeDist: 24, speed: 11, baseScale: 1.08, flies: false, swims: false,
+    build: () => quadruped({
+      body: [0.48, 0.52, 1.05], bodyY: 0.82, bodyColor: '#b8916a',
+      head: [0.28, 0.32, 0.38], headFwd: 0.12, headUp: 0.52,
+      snout: [0.13, 0.12, 0.17, '#4a3a2c'], ears: [0.1, 0.22, 0.12],
+      legH: 0.7, legW: 0.085, // no antlers — she doesn't need them
+      tail: { size: [0.15, 0.17, 0.1], color: '#e8e2d4' },
     }),
   },
   {
@@ -528,6 +761,35 @@ export const SPECIES: SpeciesDef[] = [
     id: 'pike', name: 'Northern Pike', habitats: ['water'], rarity: 0.3, fleeDist: 5, speed: 6, baseScale: 1.0, flies: false, swims: false, aquatic: true,
     build: () => fish('#5a7a4a', '#46603a', 0.75),
   },
+  // ---- the Late Cretaceous wing of the photo book ----
+  {
+    id: 'trex', name: 'Tyrannosaurus Rex', habitats: ['field', 'forest'], rarity: 0.08, fleeDist: 0, speed: 7, baseScale: 1.0, flies: false, swims: false, dino: true,
+    build: trex,
+  },
+  {
+    id: 'diplodocus', name: 'Diplodocus', habitats: ['field'], rarity: 0.1, fleeDist: 0, speed: 3, baseScale: 1.0, flies: false, swims: false, dino: true,
+    build: diplodocus,
+  },
+  {
+    id: 'stegosaurus', name: 'Stegosaurus', habitats: ['field', 'forest'], rarity: 0.12, fleeDist: 0, speed: 3.5, baseScale: 1.0, flies: false, swims: false, dino: true,
+    build: stegosaurus,
+  },
+  {
+    id: 'triceratops', name: 'Triceratops', habitats: ['field'], rarity: 0.12, fleeDist: 0, speed: 4.5, baseScale: 1.0, flies: false, swims: false, dino: true,
+    build: triceratops,
+  },
+  {
+    id: 'parasaurolophus', name: 'Parasaurolophus', habitats: ['field', 'forest'], rarity: 0.14, fleeDist: 0, speed: 5.5, baseScale: 1.0, flies: false, swims: false, dino: true,
+    build: parasaurolophus,
+  },
+  {
+    id: 'pachycephalosaurus', name: 'Pachycephalosaurus', habitats: ['field', 'forest'], rarity: 0.14, fleeDist: 0, speed: 6, baseScale: 1.0, flies: false, swims: false, dino: true,
+    build: pachycephalosaurus,
+  },
+  {
+    id: 'pteranodon', name: 'Pteranodon', habitats: ['field'], rarity: 0.16, fleeDist: 0, speed: 8, baseScale: 1.0, flies: true, swims: false, dino: true,
+    build: pteranodon,
+  },
 ];
 
 export const SPECIES_BY_ID = new Map(SPECIES.map((s) => [s.id, s]));
@@ -553,6 +815,15 @@ export function rollSize(rand: () => number, bias = 0): SizeRoll {
   let g = (rand() + rand() + rand()) / 3; // bell-shaped in [0,1]
   g += bias * (1 - g);
   const factor = Math.max(0.5, Math.pow(2, (g - 0.5) * 4.4));
+  return describeSize(factor);
+}
+
+/**
+ * Dinosaur sizes only go one way: up. Factor 1 (already huge) to ~3.6
+ * (make-your-own-earthquake), with the top end rarer.
+ */
+export function rollDinoSize(rand: () => number): SizeRoll {
+  const factor = 1 + rand() * rand() * 2.6;
   return describeSize(factor);
 }
 
@@ -592,6 +863,11 @@ export class Animal {
   zombie = false;
   zombieSpeed = 1; // difficulty multiplier, updated by ZombieMode
   zombieStun = 0; // seconds of knockback stun after clawing the player
+  // -- apex predator paperwork --
+  huntTarget: Animal | null = null; // what the T. rex has decided is lunch
+  justKilled: Animal | null = null; // set for one frame so the spawner can splatter
+  anchor: { x: number; z: number } | null = null; // T. rex loiters near its last kill
+  trexTimer = 12; // seconds until the next hunt
 
   constructor(def: SpeciesDef, x: number, z: number, size: SizeRoll, private world: World) {
     this.def = def;
@@ -675,11 +951,14 @@ export class Animal {
         this.state = 'idle'; // perched birds sit still until something happens
         return;
       }
+      // an anchored T. rex paces around its last kill instead of roaming off
+      const cx = this.anchor?.x ?? this.position.x;
+      const cz = this.anchor?.z ?? this.position.z;
       for (let i = 0; i < 8; i++) {
         const a = Math.random() * Math.PI * 2;
-        const d = 5 + Math.random() * 18;
-        const tx = this.position.x + Math.cos(a) * d;
-        const tz = this.position.z + Math.sin(a) * d;
+        const d = 5 + Math.random() * (this.anchor ? 10 : 18);
+        const tx = cx + Math.cos(a) * d;
+        const tz = cz + Math.sin(a) * d;
         if (this.terrainOk(tx, tz)) {
           this.target.set(tx, tz);
           return;
@@ -691,6 +970,7 @@ export class Animal {
 
   spook(playerPos: THREE.Vector3) {
     if (this.def.temperament === 'friendly') return; // nothing scares a farm cat
+    if (this.def.dino) return; // and NOTHING scares a dinosaur, least of all you
     if (this.state === 'flee' || this.state === 'flyaway' || this.state === 'alert') return;
     this.enterState('alert');
     const dx = this.position.x - playerPos.x;
@@ -710,7 +990,14 @@ export class Animal {
     const distToPlayer = Math.hypot(p.x - playerPos.x, p.z - playerPos.z);
     const friendly = this.def.temperament === 'friendly';
 
-    if (!friendly && this.state !== 'flee' && this.state !== 'flyaway' && this.state !== 'alert' && this.state !== 'flyover') {
+    // T. rex on the hunt overrides everything else on the schedule
+    if (this.huntTarget) {
+      this.updateHunt(dt);
+      this.animateWalk();
+      return;
+    }
+
+    if (!friendly && !this.def.dino && this.state !== 'flee' && this.state !== 'flyaway' && this.state !== 'alert' && this.state !== 'flyover') {
       // shy: closer + noisier player = spook (perched birds watch from higher up)
       const fleeAt = this.perchY !== null ? this.def.fleeDist * 0.55 : this.def.fleeDist;
       if (distToPlayer < fleeAt * playerNoise) this.spook(playerPos);
@@ -755,12 +1042,13 @@ export class Animal {
         break;
       }
       case 'flyover': {
+        if (this.def.id === 'pteranodon') this.heading += 0.22 * dt; // lazy circles, king of the sky
         p.x += Math.sin(this.heading) * this.def.speed * 2.4 * dt;
         p.z += Math.cos(this.heading) * this.def.speed * 2.4 * dt;
         p.y = this.flyoverY + Math.sin(this.animT * 1.3) * 0.6;
         this.rig.group.rotation.y = this.heading;
         this.moving = true;
-        if (this.stateT > 18) this.alive = false;
+        if (this.stateT > 18 && this.def.id !== 'pteranodon') this.alive = false;
         break;
       }
       case 'flee': {
@@ -803,20 +1091,10 @@ export class Animal {
       }
     }
 
-    // procedural animation
-    const fast = this.state === 'flee' || this.state === 'flyaway';
-    const rate = this.moving ? (fast ? 14 : 7) : 0;
-    const amp = this.moving ? 0.55 : 0;
-    this.rig.legs.forEach((leg, i) => {
-      const phase = i % 2 === 0 ? 0 : Math.PI;
-      leg.rotation.x = Math.sin(this.animT * rate + phase) * amp;
-    });
+    this.animateWalk();
     if (this.def.aquatic) {
       // fish: constant tail wiggle + gentle bob below the surface
-      if (this.rig.tail) this.rig.tail.rotation.y = Math.sin(this.animT * (this.moving ? 9 : 4)) * 0.5;
       p.y = WATER_Y - 0.4 + Math.sin(this.animT * 1.7) * 0.08;
-    } else if (this.rig.tail) {
-      this.rig.tail.rotation.y = Math.sin(this.animT * 3.2) * 0.25;
     }
     if (this.state === 'graze') {
       this.rig.head.rotation.x = THREE.MathUtils.lerp(this.rig.head.rotation.x, 0.85, dt * 5);
@@ -825,6 +1103,60 @@ export class Animal {
     } else {
       this.rig.head.rotation.x = THREE.MathUtils.lerp(this.rig.head.rotation.x, Math.sin(this.animT * 1.4) * 0.06, dt * 4);
     }
+  }
+
+  /** Legs swing, tails wag, pteranodon "legs" (wings) flap. */
+  private animateWalk() {
+    const fast = this.state === 'flee' || this.state === 'flyaway' || this.huntTarget !== null;
+    const wings = this.def.id === 'pteranodon';
+    const rate = wings ? 3.2 : this.moving ? (fast ? 14 : 7) : 0;
+    const amp = wings ? 0.35 : this.moving ? 0.55 : 0;
+    this.rig.legs.forEach((leg, i) => {
+      const phase = wings ? 0 : i % 2 === 0 ? 0 : Math.PI;
+      const axis = wings ? 'z' : 'x';
+      const swing = Math.sin(this.animT * rate + phase) * amp;
+      if (axis === 'z') leg.rotation.z = swing * (i === 0 ? 1 : -1);
+      else leg.rotation.x = swing;
+    });
+    if (this.def.aquatic) {
+      if (this.rig.tail) this.rig.tail.rotation.y = Math.sin(this.animT * (this.moving ? 9 : 4)) * 0.5;
+    } else if (this.rig.tail) {
+      this.rig.tail.rotation.y = Math.sin(this.animT * 3.2) * 0.25;
+    }
+  }
+
+  /** The T. rex closes on its target; on contact, lunch is served. */
+  private updateHunt(dt: number) {
+    const target = this.huntTarget!;
+    if (!target.alive) {
+      this.huntTarget = null;
+      return;
+    }
+    const p = this.position;
+    const dx = target.position.x - p.x;
+    const dz = target.position.z - p.z;
+    const dist = Math.hypot(dx, dz);
+    if (dist > 120) {
+      this.huntTarget = null; // got away — this time
+      return;
+    }
+    this.turnToward(Math.atan2(dx, dz), dt * 2.2);
+    const reach = 2.2 + this.scale + target.scale * 0.4;
+    if (dist <= reach) {
+      target.alive = false;
+      this.justKilled = target; // the spawner handles the... aftermath
+      this.anchor = { x: target.position.x, z: target.position.z };
+      this.huntTarget = null;
+      this.enterState('idle');
+      return;
+    }
+    const speed = this.def.speed * this.speedScale * 1.15;
+    const nx = p.x + Math.sin(this.heading) * speed * dt;
+    const nz = p.z + Math.cos(this.heading) * speed * dt;
+    const [cx, cz] = this.world.collide(nx, nz, 0.6 * this.scale);
+    p.set(cx, Math.max(this.world.heightAt(cx, cz), WATER_Y - 0.25), cz);
+    this.rig.group.rotation.y = this.heading;
+    this.moving = true;
   }
 
   /** Zombie AI: shamble straight at the player, always. */
@@ -895,15 +1227,26 @@ const SPAWN_MIN = 45;
 const SPAWN_MAX = 110;
 const DESPAWN = 150;
 
-const LAND_SPECIES = SPECIES.filter((s) => !s.aquatic);
+const LAND_SPECIES = SPECIES.filter((s) => !s.aquatic && !s.dino);
 const FISH_SPECIES = SPECIES.filter((s) => s.aquatic);
-const FLIER_SPECIES = SPECIES.filter((s) => s.flies);
+const FLIER_SPECIES = SPECIES.filter((s) => s.flies && !s.dino);
+const DINO_SPECIES = SPECIES.filter((s) => s.dino);
+
+const DINO_UNLOCK_TIME = 180; // seconds of gameplay before the past wakes up
+const DINO_MIN_DIST_FROM_HOME = 250; // meters from the starting town
+const MAX_DINOS = 4;
+
+export interface GoreLike {
+  burst(at: THREE.Vector3, scale: number): void;
+}
 
 export class AnimalSpawner {
   readonly animals: Animal[] = [];
   private cooldown = 0;
   private fishCooldown = 0;
   private flyoverTimer = 8; // first flyover comes fairly soon
+  private discoveryTimer = 25; // guaranteed something-new, roughly every minute
+  private giantTimer = 15 + Math.random() * 60; // guaranteed whopper, ditto
 
   /** Easy mode: far more animals, closer, and bigger on average. */
   easy = false;
@@ -911,6 +1254,12 @@ export class AnimalSpawner {
   zombieMax = 0; // 0 = zombie mode off
   zombieInterval = 1.2;
   onSpawn: ((a: Animal) => void) | null = null; // zombification hook
+  /** Species already in the photo book — main keeps this fresh. */
+  photographed = new Set<string>();
+  /** Session play time in seconds — gates the dinosaurs. */
+  elapsed = 0;
+  /** Shared splatter system, for when the T. rex catches something. */
+  gore: GoreLike | null = null;
 
   constructor(private world: World, private scene: THREE.Scene) {}
 
@@ -925,10 +1274,27 @@ export class AnimalSpawner {
         this.flyoverTimer = 16 + Math.random() * 20;
         this.spawnFlyover(playerPos);
       }
+      // engagement pacing: one unseen species and one giant per minute-ish
+      this.discoveryTimer -= dt;
+      if (this.discoveryTimer <= 0) {
+        this.discoveryTimer = 60;
+        this.spawnDiscovery(playerPos);
+      }
+      this.giantTimer -= dt;
+      if (this.giantTimer <= 0) {
+        this.giantTimer = 15 + Math.random() * 75; // random moment each minute-ish
+        this.spawnGiant(playerPos);
+      }
     }
     for (let i = this.animals.length - 1; i >= 0; i--) {
       const a = this.animals[i];
       a.update(dt, playerPos, playerNoise);
+      if (a.justKilled) {
+        // T. rex dining: splatter where the victim stood
+        this.gore?.burst(a.justKilled.position, a.justKilled.scale);
+        a.justKilled = null;
+        a.trexTimer = 18 + Math.random() * 6;
+      }
       const d = Math.hypot(a.position.x - playerPos.x, a.position.z - playerPos.z);
       const range = a.def.aquatic ? 32 : DESPAWN;
       if (!a.alive || d > range) {
@@ -936,6 +1302,9 @@ export class AnimalSpawner {
         this.animals.splice(i, 1);
       }
     }
+    // hungry tyrants pick their next course
+    if (!zombieMode) this.updateTrexHunts(dt);
+
     const landCount = this.animals.filter((a) => !a.def.aquatic).length;
     if (zombieMode) {
       if (landCount < this.zombieMax && this.cooldown <= 0) {
@@ -951,10 +1320,91 @@ export class AnimalSpawner {
       for (let i = 0; i < burst; i++) this.trySpawn(playerPos);
     }
     // fish only show up while the player is wading
-    const fishCount = this.animals.length - landCount;
+    const fishCount = this.animals.filter((a) => a.def.aquatic).length;
     if (playerWaterDepth > 0.35 && fishCount < MAX_FISH && this.fishCooldown <= 0) {
       this.fishCooldown = 1.4;
       this.trySpawnFish(playerPos);
+    }
+  }
+
+  private updateTrexHunts(dt: number) {
+    for (const rex of this.animals) {
+      if (rex.def.id !== 'trex' || rex.zombie || !rex.alive) continue;
+      if (rex.huntTarget) continue; // already mid-chase
+      rex.trexTimer -= dt;
+      if (rex.trexTimer > 0) continue;
+      // closest snack within range (other dinos are too much paperwork)
+      let best: Animal | null = null;
+      let bestD = 45;
+      for (const prey of this.animals) {
+        if (prey === rex || !prey.alive || prey.def.dino || prey.def.aquatic || prey.flying) continue;
+        const d = Math.hypot(prey.position.x - rex.position.x, prey.position.z - rex.position.z);
+        if (d < bestD) {
+          bestD = d;
+          best = prey;
+        }
+      }
+      if (best) {
+        rex.huntTarget = best;
+      } else {
+        rex.trexTimer = 5; // nothing on the menu yet; check back soon
+      }
+    }
+  }
+
+  /** Is this spot dinosaur country? (far from home, late enough in the trip) */
+  private dinoChanceAt(x: number, z: number): number {
+    if (this.elapsed < DINO_UNLOCK_TIME) return 0;
+    const home = this.world.spawnHint ?? { x: 0, z: 0 };
+    if (Math.hypot(x - home.x, z - home.z) < DINO_MIN_DIST_FROM_HOME) return 0;
+    const nearFossil = this.world.fossils.some((f) => Math.hypot(x - f.x, z - f.z) < 80);
+    return nearFossil ? 0.55 : 0.12; // fossils are basically dinosaur bus stops
+  }
+
+  /** Every minute, guarantee a species the player hasn't photographed yet. */
+  private spawnDiscovery(playerPos: THREE.Vector3) {
+    const unseen = LAND_SPECIES.filter((s) => !this.photographed.has(s.id));
+    if (unseen.length === 0) return; // book's full — nothing left to tease
+    const def = this.weightedPick(unseen);
+    if (!def) return;
+    // park it close enough to notice, at a spot its habitat approves of
+    for (let i = 0; i < 20; i++) {
+      const ang = Math.random() * Math.PI * 2;
+      const dist = 30 + Math.random() * 40;
+      const x = playerPos.x + Math.cos(ang) * dist;
+      const z = playerPos.z + Math.sin(ang) * dist;
+      if (Math.abs(x) > 570 || Math.abs(z) > 570) continue;
+      const habitat = this.world.habitatAt(x, z);
+      const habitatOk = def.habitats.includes(habitat);
+      if (def.swims && this.world.heightAt(x, z) > WATER_Y - 0.15) continue;
+      if (!def.swims && this.world.heightAt(x, z) < WATER_Y + 0.15) continue;
+      if (habitatOk || i > 12) {
+        // after enough tries, close-by beats habitat-purist
+        this.spawn(def, x, z);
+        return;
+      }
+    }
+  }
+
+  /** Every minute-ish, at a random moment: one exceptionally large specimen. */
+  private spawnGiant(playerPos: THREE.Vector3) {
+    for (let i = 0; i < 15; i++) {
+      const ang = Math.random() * Math.PI * 2;
+      const dist = 35 + Math.random() * 45;
+      const x = playerPos.x + Math.cos(ang) * dist;
+      const z = playerPos.z + Math.sin(ang) * dist;
+      if (Math.abs(x) > 570 || Math.abs(z) > 570) continue;
+      if (this.world.heightAt(x, z) < WATER_Y + 0.15) continue;
+      const habitat = this.world.habitatAt(x, z);
+      const pool = LAND_SPECIES.filter((s) => s.habitats.includes(habitat) && !s.swims);
+      const def = this.weightedPick(pool);
+      if (!def) continue;
+      const size = describeSize(3.4 + Math.random() * 1.2); // certified MASSIVE
+      const animal = new Animal(def, x, z, size, this.world);
+      this.scene.add(animal.rig.group);
+      this.animals.push(animal);
+      this.onSpawn?.(animal);
+      return;
     }
   }
 
@@ -978,6 +1428,25 @@ export class AnimalSpawner {
     const x = playerPos.x + Math.cos(ang) * dist;
     const z = playerPos.z + Math.sin(ang) * dist;
     if (Math.abs(x) > 570 || Math.abs(z) > 570) return;
+
+    // deep wilderness roll: sometimes what steps out isn't from this epoch
+    const dinoChance = this.dinoChanceAt(x, z);
+    if (dinoChance > 0 && Math.random() < dinoChance) {
+      if (this.animals.filter((a) => a.def.dino).length >= MAX_DINOS) return;
+      if (this.world.heightAt(x, z) < WATER_Y + 0.3) return;
+      const def = this.weightedPick(DINO_SPECIES);
+      if (!def) return;
+      if (this.animals.some((a) => a.def.id === def.id && def.id === 'trex')) return; // one apex at a time
+      const animal = new Animal(def, x, z, rollDinoSize(Math.random), this.world);
+      this.scene.add(animal.rig.group);
+      this.animals.push(animal);
+      this.onSpawn?.(animal);
+      if (def.id === 'pteranodon') {
+        animal.startFlyover(Math.random() * Math.PI * 2, playerPos.y + 14 + Math.random() * 10);
+      }
+      return;
+    }
+
     const habitat = this.world.habitatAt(x, z);
     const pool = LAND_SPECIES.filter((s) => s.habitats.includes(habitat));
     const def = this.weightedPick(pool);
@@ -986,13 +1455,22 @@ export class AnimalSpawner {
     if (def.swims && this.world.heightAt(x, z) > WATER_Y - 0.15) return;
     if (!def.swims && this.world.heightAt(x, z) < WATER_Y + 0.15) return;
     const animal = this.spawn(def, x, z);
-    // forest birds often start out perched on a treetop
+    // forest birds often start out perched — at the very top of a tree where
+    // you can actually SEE them, or on the ground at its base
     if (def.flies && !def.swims && habitat === 'forest' && Math.random() < 0.55) {
       const tree = this.world.randomTreeNear(x, z, 14);
       if (tree) {
-        animal.position.x = tree.x;
-        animal.position.z = tree.z;
-        animal.perchAt(this.world.heightAt(tree.x, tree.z) - 0.2 + 5.0 * tree.scale);
+        if (Math.random() < 0.6) {
+          // crow's nest: right on the canopy tip, silhouetted against the sky
+          animal.position.x = tree.x;
+          animal.position.z = tree.z;
+          animal.perchAt(this.world.heightAt(tree.x, tree.z) - 0.2 + 7.6 * tree.scale);
+        } else {
+          // ground floor: pecking around the trunk
+          animal.position.x = tree.x + 1.2;
+          animal.position.z = tree.z + 0.4;
+          animal.position.y = this.world.heightAt(tree.x + 1.2, tree.z + 0.4);
+        }
       }
     }
   }

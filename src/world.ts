@@ -34,6 +34,8 @@ export class World {
   private pathGrid = new Map<string, Array<[number, number]>>();
   private treeGrid = new Map<string, Array<[number, number, number]>>(); // x, z, scale
   spawnHint: { x: number; z: number } | null = null;
+  /** Half-buried skeletons scattered in the far wilds. Dinosaurs like these. */
+  readonly fossils: Array<{ x: number; z: number }> = [];
 
   constructor(seed: number) {
     this.seed = seed | 0;
@@ -43,6 +45,7 @@ export class World {
     this.buildWater();
     this.buildVegetation();
     this.buildTowns();
+    this.buildFossils();
   }
 
   // ---------------------------------------------------------------- height
@@ -572,6 +575,69 @@ export class World {
 
     const half = Math.max(w, d) / 2 + 0.5; // conservative rotated AABB
     this.buildingBoxes.push({ minX: x - half, maxX: x + half, minZ: z - half, maxZ: z + half });
+  }
+
+  /** Ancient ribcages poking out of the dirt, far from civilization. */
+  private buildFossils() {
+    const rng = mulberry32(this.seed ^ 0xf055);
+    const bone = new THREE.MeshLambertMaterial({ color: '#d8cdb4' });
+    const boneDark = new THREE.MeshLambertMaterial({ color: '#bfb298' });
+    const home = this.spawnHint ?? { x: 0, z: 0 };
+    let guard = 0;
+    while (this.fossils.length < 8 && guard++ < 300) {
+      const x = (rng() * 2 - 1) * 540;
+      const z = (rng() * 2 - 1) * 540;
+      if (Math.hypot(x - home.x, z - home.z) < 280) continue; // keep the mystery distant
+      if (this.heightAt(x, z) < WATER_Y + 0.8) continue;
+      if (this.nearTown(x, z, 30)) continue;
+      if (this.fossils.some((f) => Math.hypot(x - f.x, z - f.z) < 150)) continue;
+      this.fossils.push({ x, z });
+
+      const g = new THREE.Group();
+      const ang = rng() * Math.PI * 2;
+      const ax = Math.cos(ang);
+      const az = Math.sin(ang);
+      const ribs = 5 + Math.floor(rng() * 3);
+      // spine of vertebrae...
+      for (let i = -1; i <= ribs; i++) {
+        const v = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.35, 0.5), boneDark);
+        const px = x + ax * i * 1.15;
+        const pz = z + az * i * 1.15;
+        v.position.set(px, this.heightAt(px, pz) + 0.1, pz);
+        v.rotation.y = -ang;
+        g.add(v);
+      }
+      // ...with ribs curving up out of the ground on both sides
+      for (let i = 0; i < ribs; i++) {
+        const px = x + ax * i * 1.15;
+        const pz = z + az * i * 1.15;
+        const h = 2.0 + rng() * 1.2 - Math.abs(i - ribs / 2) * 0.25; // taller mid-cage
+        for (const side of [-1, 1]) {
+          const rib = new THREE.Mesh(new THREE.BoxGeometry(0.16, h, 0.2), bone);
+          rib.position.set(px - az * side * 1.35, this.heightAt(px, pz) + h * 0.32, pz + ax * side * 1.35);
+          rib.rotation.y = -ang;
+          // gentle inward arch — a ribcage, not a pile of pick-up sticks
+          rib.rotation.z = side * (0.22 + rng() * 0.08);
+          rib.rotation.x = (rng() - 0.5) * 0.1;
+          rib.castShadow = true;
+          g.add(rib);
+        }
+      }
+      // the skull, half sunk, contemplating eternity
+      const skull = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.8, 1.0), bone);
+      const sx = x - ax * 2.1;
+      const sz = z - az * 2.1;
+      skull.position.set(sx, this.heightAt(sx, sz) + 0.15, sz);
+      skull.rotation.y = -ang + 0.3;
+      skull.rotation.z = 0.12;
+      skull.castShadow = true;
+      g.add(skull);
+      const eye = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.3), new THREE.MeshLambertMaterial({ color: '#4a4238' }));
+      eye.position.set(sx + 0.45, this.heightAt(sx, sz) + 0.45, sz + 0.2);
+      eye.rotation.copy(skull.rotation);
+      g.add(eye);
+      this.group.add(g);
+    }
   }
 
   /** Circle-vs-AABB push out for player/animal collision. */
