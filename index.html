@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>Wildlife Polaroid</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%B7%3C/text%3E%3C/svg%3E"
+    />
+    <script type="module" crossorigin src="./assets/index-DyPTuJyl.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-pD3vJ6FV.css">
+  </head>
+  <body>
+    <div id="app"></div>
+
+    <!-- HUD -->
+    <div id="hud" class="hidden">
+      <div id="crosshair"></div>
+      <div id="viewfinder" class="hidden">
+        <div class="vf-corner tl"></div>
+        <div class="vf-corner tr"></div>
+        <div class="vf-corner bl"></div>
+        <div class="vf-corner br"></div>
+        <div class="vf-label">◉ REC-LIGHT OFF · POLAROID 600</div>
+      </div>
+      <div id="score"></div>
+      <div id="hint">Click — photo &nbsp;·&nbsp; Right-click — zoom &nbsp;·&nbsp; Space — photo book &nbsp;·&nbsp; Shift — run &nbsp;·&nbsp; C — sneak</div>
+      <div id="toast" class="hidden"></div>
+      <div id="zombie-hud" class="hidden"></div>
+      <div id="kill-feed"></div>
+      <div id="hurt"></div>
+      <div id="water-overlay"></div>
+      <div id="develop"></div>
+      <div id="flash"></div>
+      <div id="touch-ui">
+        <div id="joystick" aria-label="Move">
+          <div id="joystick-knob"></div>
+        </div>
+        <button id="t-snap" class="touch-btn snap" aria-label="Take photo">
+          <span class="shutter-ring"><span class="shutter-core"></span></span>
+        </button>
+        <button id="t-book" class="touch-btn small" aria-label="Photo book">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor"><path d="M21 4H7a2 2 0 0 0-2 2v13a3 3 0 0 0 3 3h13v-2H8a1 1 0 0 1 0-2h13V5a1 1 0 0 0-1-1h.1zM7 6h12v10H7V6zm2 2v6l4-3-4-3z"/></svg>
+        </button>
+        <button id="t-cog" class="touch-btn small" aria-label="Settings">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor"><path d="M19.4 13a7.6 7.6 0 0 0 .1-1 7.6 7.6 0 0 0-.1-1l2.1-1.7c.2-.1.2-.4.1-.6l-2-3.5c-.1-.2-.4-.3-.6-.2l-2.5 1a7.3 7.3 0 0 0-1.7-1l-.4-2.6a.5.5 0 0 0-.5-.4h-4a.5.5 0 0 0-.5.4l-.4 2.6a7.3 7.3 0 0 0-1.7 1l-2.5-1a.5.5 0 0 0-.6.2l-2 3.5c-.1.2-.1.5.1.6L4.5 11a7.6 7.6 0 0 0 0 2l-2.1 1.7a.5.5 0 0 0-.1.6l2 3.5c.1.2.4.3.6.2l2.5-1c.5.4 1.1.7 1.7 1l.4 2.6c0 .2.2.4.5.4h4c.2 0 .5-.2.5-.4l.4-2.6a7.3 7.3 0 0 0 1.7-1l2.5 1c.2.1.5 0 .6-.2l2-3.5a.5.5 0 0 0-.1-.6L19.4 13zM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z"/></svg>
+        </button>
+        <div id="zoom-wrap">
+          <span class="zoom-label">+</span>
+          <input id="zoom-slider" type="range" min="30" max="70" step="1" value="70" aria-label="Zoom" />
+          <span class="zoom-label">−</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Photo book -->
+    <div id="book" class="hidden">
+      <div class="book-inner">
+        <div class="book-title">Field Photo Book <span id="book-progress"></span></div>
+        <div id="book-pages"></div>
+        <div class="book-nav">
+          <button id="book-prev">‹ prev</button>
+          <span id="book-pageno"></span>
+          <button id="book-next">next ›</button>
+          <button id="book-close">✕ close</button>
+        </div>
+        <div class="book-hint">Space / Esc — close · ← → — flip pages</div>
+      </div>
+    </div>
+
+    <!-- Title screen -->
+    <div id="title">
+      <div class="panel">
+        <h1>Wildlife Polaroid</h1>
+        <p class="tagline">A quiet open world. A camera. Every animal you can find.</p>
+        <div class="menu-buttons">
+          <button id="btn-new" class="primary">New trip</button>
+          <button id="btn-continue" class="hidden">Continue last trip</button>
+          <button id="btn-load">Load save file (.zip)</button>
+          <button id="btn-help">How to play</button>
+        </div>
+        <div class="seed-row">
+          <label for="seed-input">World seed</label>
+          <input id="seed-input" type="text" placeholder="random" maxlength="10" />
+        </div>
+        <p id="title-status" class="status"></p>
+        <p class="credits">WASD to walk · your save is a zip file with all your photos inside</p>
+      </div>
+    </div>
+
+    <!-- Pause menu -->
+    <div id="pause" class="hidden">
+      <div class="panel">
+        <h2>Paused</h2>
+        <p id="pause-stats"></p>
+        <div class="menu-buttons">
+          <button id="btn-resume" class="primary">Resume</button>
+          <button id="btn-save">Save trip — download .zip</button>
+          <button id="btn-load2">Load save file (.zip)</button>
+          <button id="btn-help2">Instructions</button>
+          <button id="btn-cheats">Cheats</button>
+          <button id="btn-quit">Quit to title</button>
+        </div>
+        <div class="slider-row">
+          <label for="vol-music">Music</label>
+          <input id="vol-music" type="range" min="0" max="100" step="1" />
+        </div>
+        <div class="slider-row">
+          <label for="vol-sfx">Effects</label>
+          <input id="vol-sfx" type="range" min="0" max="100" step="1" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Zombie game over -->
+    <div id="gameover" class="hidden">
+      <div class="panel">
+        <h2>You didn't make it.</h2>
+        <p id="gameover-stats"></p>
+        <p id="gameover-score" class="go-score"></p>
+        <div class="menu-buttons">
+          <button id="btn-go-return" class="primary">Wake up — back to your photo trip</button>
+          <button id="btn-go-quit">Quit to title</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cheats -->
+    <div id="cheats" class="hidden">
+      <div class="panel">
+        <h2>Cheats</h2>
+        <p class="tagline">No judgement.</p>
+        <div class="menu-buttons">
+          <button id="btn-gallery">Species gallery — see every animal</button>
+          <button id="btn-easy">Easy mode: off</button>
+          <button id="btn-zombie">🧟 Zombie survival — good luck</button>
+          <button id="btn-cheats-close">Back</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Species gallery -->
+    <div id="gallery" class="hidden">
+      <div class="gallery-inner">
+        <div class="gallery-title">
+          <span>Species gallery</span>
+          <button id="btn-gallery-close">✕ close</button>
+        </div>
+        <div id="gallery-grid"><p class="gallery-loading">Developing portraits…</p></div>
+      </div>
+    </div>
+
+    <!-- Instructions -->
+    <div id="help" class="hidden">
+      <div class="panel help-panel">
+        <h2>How to play</h2>
+        <div class="help-body">
+          <p class="help-goal">
+            Photograph every species in your field book. Fields, forests, towns, and water
+            each have their own animals — including villagers, and fish that only show up
+            while you're wading.
+          </p>
+          <div class="help-cols">
+            <div class="help-col" id="help-desktop">
+              <h3>Computer controls</h3>
+              <ul>
+                <li><b>Mouse</b> — look around (click once first to grab the mouse)</li>
+                <li><b>W A S D</b> or arrow keys — walk (relative to where you're looking)</li>
+                <li><b>Shift</b> — run (fast, but loud — animals bolt sooner)</li>
+                <li><b>C</b> — sneak (slow and quiet — get much closer)</li>
+                <li><b>Left-click</b> — take a photo</li>
+                <li><b>Right-click</b> — hold to zoom the lens</li>
+                <li><b>Space</b> — open/close the photo book · <b>← →</b> flip pages</li>
+                <li><b>Esc</b> — pause menu: save, load, volume, cheats</li>
+              </ul>
+            </div>
+            <div class="help-col" id="help-touch">
+              <h3>Touch controls</h3>
+              <ul>
+                <li><b>Drag</b> anywhere on the view to look around</li>
+                <li><b>Joystick</b> (bottom-left) — move in any direction relative to your view; push it to the rim to run</li>
+                <li><b>Shutter</b> (bottom-right) — take a photo</li>
+                <li><b>Book</b> (bottom-centre) — your photo album</li>
+                <li><b>Slider</b> (right edge) — zoom; <b>+</b> is up</li>
+                <li><b>Cog</b> (top-right) — save, load, volume, cheats</li>
+              </ul>
+            </div>
+          </div>
+          <h3>Moving around the world</h3>
+          <ul>
+            <li>Paths connect the towns — follow them, or cut through fields and forests.</li>
+            <li>You can <b>swim</b>: just walk into a lake. The deeper you wade, the higher the water rises up your screen and the slower you move — that's when fish appear around you.</li>
+            <li>Running is for covering ground, not for hunting: animals hear you from far away. When stalking, walk — or better, sneak.</li>
+          </ul>
+          <h3>How to get good shots</h3>
+          <ul>
+            <li><b>Framing decides your points:</b> put the animal in the <b>center</b> of the frame and make it look <b>as big on screen</b> as possible. Distance doesn't matter — the zoom is your best friend: magnify a far-away animal without ever spooking it. Three stars are earned, not given.</li>
+            <li><b>Face them:</b> a head-on portrait is worth up to +45% over a shot of their backside. Handily, spooked animals turn to stare at you first.</li>
+            <li><b>Approach slowly.</b> Shy animals freeze and stare for a moment before bolting — that stare is your best photo window. Most animals now tolerate you fairly close; a wary few (deer, herons) still need real stealth or a long lens.</li>
+            <li><b>Cats and dogs come to you</b> — crouch down and wait. Villagers don't mind you unless you crowd them.</li>
+            <li><b>Sizes:</b> every animal rolls a random size, teeny-tiny to beyond-real-life MASSIVE. Extremes are rare and worth much more. Tiny specimens score almost entirely on centering — occupancy is forgiven.</li>
+            <li><b>Combos:</b> several animals in one shot = bonus points (+40% each). The closest animal gets the album page.</li>
+            <li><b>Birds in flight</b> earn a 5× bonus. Birds perch in trees and occasionally cross the sky right above you — look up! Rarely a whole <b>flock</b> passes over: flight bonus AND combo in one shot.</li>
+            <li>Each photo takes a couple of seconds to <b>develop</b> — you can't shoot again until it's done, so make every shot count.</li>
+            <li>Only your <b>best shot per species</b> is kept, in the order you first found them.</li>
+            <li><b>Something ancient stirs…</b> after a few minutes of exploring, venture far from your starting town and look for strange bone formations in the wilds. What lingers near them is very large, completely unbothered by you — and one of them is always hungry.</li>
+            <li>Curious what a species looks like? Menu → <b>Cheats</b> → <b>Species gallery</b>.</li>
+          </ul>
+          <h3>Cheats</h3>
+          <ul>
+            <li><b>Species gallery</b> — a portrait of every animal in the book.</li>
+            <li><b>Easy mode</b> — far more animals, closer to you, and bigger on average.</li>
+            <li><b>🧟 Zombie survival</b> — every animal turns. Your camera becomes a hatchet (same button). Don't let them get within arm's reach: 5 hits and you're done. A day passes every 30 seconds, and each day they come faster and in greater numbers. Score = days × 100 + kills × 10.</li>
+          </ul>
+        </div>
+        <div class="menu-buttons">
+          <button id="btn-help-close" class="primary">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <input type="file" id="loadfile" accept=".zip,application/zip" hidden />
+  </body>
+</html>
