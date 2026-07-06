@@ -19,5 +19,6 @@
 - `npm run dev` to play locally; `npm run build` type-checks + builds;
   `npm run build:single` produces the self-contained one-file build in
   `dist-single/index.html` (this is the file delivered to players).
+- Linting & formatting are checked via biomejs `npx @biomejs/biome check`.
 - Headless smoke tests live outside the repo (session scratchpad); they drive
   the game via the `window.__game` debug hook in `src/main.ts`.
