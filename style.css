@@ -393,6 +393,26 @@ button {
   color: var(--ink);
   cursor: pointer;
 }
+/* a link dressed up as a menu button (the donate CTA) */
+.menu-link {
+  display: block;
+  font-family: inherit;
+  font-size: 16px;
+  padding: 11px 18px;
+  border-radius: 6px;
+  text-decoration: none;
+  text-align: center;
+  cursor: pointer;
+}
+.menu-link.donate {
+  background: #fbe7c6;
+  border: 1px solid #e6c069;
+  color: #7a5a1e;
+  font-weight: bold;
+}
+.menu-link.donate:hover {
+  background: #f7dca6;
+}
 button:hover {
   background: #e6ddc8;
 }
