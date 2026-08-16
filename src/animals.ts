@@ -846,6 +846,20 @@ export interface SizeRoll {
  *  handful of pixels isn't a photo subject (or a spottable zombie). */
 export const MIN_VISUAL_SCALE = 0.42;
 
+/** The largest dimension of the smallest animal never renders below this many
+ *  meters, so even a teeny robin is clearly visible once you get close. */
+export const MIN_VISIBLE_SIZE = 0.7;
+
+const _spanBox = new THREE.Box3();
+const _spanVec = new THREE.Vector3();
+/** Biggest world-space dimension of a freshly built rig (at scale 1). */
+function riggedSpan(group: THREE.Object3D): number {
+  group.updateMatrixWorld(true);
+  _spanBox.setFromObject(group);
+  _spanBox.getSize(_spanVec);
+  return Math.max(_spanVec.x, _spanVec.y, _spanVec.z);
+}
+
 /**
  * Animals vary from teeny-tiny to way-larger-than-life on a bell curve —
  * the extremes are rare and worth more points. factor spans ~0.5x to ~4.6x.
@@ -913,9 +927,14 @@ export class Animal {
     this.def = def;
     this.size = size;
     // labels/points come from the roll; the rendered size is floored so even
-    // a teeny-tiny robin stays clearly visible on screen
-    this.scale = Math.max(MIN_VISUAL_SCALE, def.baseScale * size.factor);
+    // a teeny-tiny robin stays clearly visible on screen. We floor by the
+    // model's real span (not just the multiplier) so small-bodied species
+    // get pulled up to a visible baseline too.
     this.rig = def.build();
+    const desired = def.baseScale * size.factor;
+    const span = riggedSpan(this.rig.group);
+    const visFloor = span > 0.01 ? MIN_VISIBLE_SIZE / span : MIN_VISUAL_SCALE;
+    this.scale = Math.max(MIN_VISUAL_SCALE, desired, visFloor);
     this.rig.group.scale.setScalar(this.scale);
     this.heading = Math.random() * Math.PI * 2;
     this.rig.group.rotation.y = this.heading;
